@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groupware Migrator</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="background-orb orb-a"></div>
+    <div class="background-orb orb-b"></div>
+    <div class="background-orb orb-c"></div>
+
+    <main class="app-shell">
+      <header class="hero">
+        <h1>Groupware Migrator</h1>
+        <p>Asynchronous IMAP/POP3 migration to IMAP with resumable jobs and live streaming updates.</p>
+      </header>
+
+      <section class="layout">
+        <article class="panel form-panel">
+          <h2>New Migration Job</h2>
+          <div class="mode-tabs" role="tablist" aria-label="Migration mode">
+            <button
+              id="mode-tab-single"
+              type="button"
+              class="mode-tab active"
+              data-mode-tab
+              data-mode="single"
+              role="tab"
+              aria-selected="true"
+              aria-controls="mode-panel-single"
+            >
+              Single User Migration
+            </button>
+            <button
+              id="mode-tab-batch"
+              type="button"
+              class="mode-tab"
+              data-mode-tab
+              data-mode="batch"
+              role="tab"
+              aria-selected="false"
+              aria-controls="mode-panel-batch"
+            >
+              Multiple Users (Batch CSV)
+            </button>
+          </div>
+          <p class="helper-text">Choose a mode to focus the UI on either one account or CSV batch migrations.</p>
+
+          <form id="migration-form">
+            <div class="grid two-col">
+              <label>
+                Job name
+                <input id="job-name" type="text" placeholder="customer-migration-wave-1" />
+              </label>
+              <label>
+                Workload
+                <select id="workload">
+                  <option value="mail">mail</option>
+                  <option value="calendar">calendar</option>
+                  <option value="contacts">contacts</option>
+                </select>
+              </label>
+              <label>
+                Source protocol
+                <select id="source-protocol">
+                  <option value="imap">IMAP</option>
+                  <option value="pop3">POP3</option>
+                  <option value="caldav">CalDAV</option>
+                  <option value="carddav">CardDAV</option>
+                </select>
+              </label>
+            </div>
+
+            <h3>Source connection</h3>
+            <div class="grid two-col">
+              <label>
+                Source provider
+                <select id="source-provider"></select>
+              </label>
+              <label>
+                Host
+                <input id="source-host" type="text" required placeholder="imap.source.example.com" />
+              </label>
+              <label>
+                Port
+                <input id="source-port" type="number" required value="993" />
+              </label>
+              <label>
+                Username
+                <input id="source-username" type="text" required placeholder="source-user@example.com" />
+              </label>
+              <label>
+                Password (for password auth mode)
+                <input id="source-password" type="password" required />
+              </label>
+            </div>
+            <div id="source-auth-guidance" class="guidance"></div>
+
+            <h3>Destination connection</h3>
+            <div class="grid two-col">
+              <label>
+                Destination provider
+                <select id="destination-provider"></select>
+              </label>
+              <label>
+                Host
+                <input id="destination-host" type="text" required placeholder="imap.destination.example.com" />
+              </label>
+              <label>
+                Port
+                <input id="destination-port" type="number" required value="993" />
+              </label>
+              <label>
+                Username
+                <input id="destination-username" type="text" required placeholder="dest-user@example.com" />
+              </label>
+              <label>
+                Password (for password auth mode)
+                <input id="destination-password" type="password" required />
+              </label>
+            </div>
+            <div id="destination-auth-guidance" class="guidance"></div>
+            <div class="advanced-settings">
+              <button
+                id="advanced-settings-toggle"
+                type="button"
+                class="advanced-toggle"
+                aria-expanded="false"
+                aria-controls="advanced-settings-panel"
+              >
+                Show advanced settings
+              </button>
+              <div id="advanced-settings-panel" class="advanced-panel" hidden>
+                <div class="grid two-col">
+                  <label>
+                    Source auth mode
+                    <select id="source-auth-mode">
+                      <option value="password">password</option>
+                      <option value="oauth2">oauth2 / xoauth2</option>
+                    </select>
+                  </label>
+                  <label>
+                    Destination auth mode
+                    <select id="destination-auth-mode">
+                      <option value="password">password</option>
+                      <option value="oauth2">oauth2 / xoauth2</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="source-oauth-fields" class="oauth-fields" hidden>
+                  <h4>Source OAuth settings</h4>
+                  <div class="grid two-col">
+                    <label>
+                      Source OAuth access token
+                      <input id="source-oauth-access-token" type="password" placeholder="ya29..." />
+                    </label>
+                    <label>
+                      Source OAuth refresh token
+                      <input id="source-oauth-refresh-token" type="password" placeholder="1//0..." />
+                    </label>
+                    <label>
+                      Source OAuth client ID
+                      <input id="source-oauth-client-id" type="text" placeholder="client-id.apps.example.com" />
+                    </label>
+                    <label>
+                      Source OAuth client secret
+                      <input id="source-oauth-client-secret" type="password" placeholder="client-secret" />
+                    </label>
+                    <label>
+                      Source OAuth token URL
+                      <input id="source-oauth-token-url" type="text" placeholder="https://oauth2.example.com/token" />
+                    </label>
+                    <label>
+                      Source OAuth scope (optional)
+                      <input id="source-oauth-scope" type="text" placeholder="https://mail.example.com/.default" />
+                    </label>
+                  </div>
+                </div>
+                <div id="destination-oauth-fields" class="oauth-fields" hidden>
+                  <h4>Destination OAuth settings</h4>
+                  <div class="grid two-col">
+                    <label>
+                      Destination OAuth access token
+                      <input id="destination-oauth-access-token" type="password" placeholder="ya29..." />
+                    </label>
+                    <label>
+                      Destination OAuth refresh token
+                      <input id="destination-oauth-refresh-token" type="password" placeholder="1//0..." />
+                    </label>
+                    <label>
+                      Destination OAuth client ID
+                      <input id="destination-oauth-client-id" type="text" placeholder="client-id.apps.example.com" />
+                    </label>
+                    <label>
+                      Destination OAuth client secret
+                      <input id="destination-oauth-client-secret" type="password" placeholder="client-secret" />
+                    </label>
+                    <label>
+                      Destination OAuth token URL
+                      <input id="destination-oauth-token-url" type="text" placeholder="https://oauth2.example.com/token" />
+                    </label>
+                    <label>
+                      Destination OAuth scope (optional)
+                      <input id="destination-oauth-scope" type="text" placeholder="https://mail.example.com/.default" />
+                    </label>
+                  </div>
+                </div>
+                <div class="grid two-col">
+                  <label>
+                    Source TLS profile
+                    <select id="source-tls-profile">
+                      <option value="modern">modern</option>
+                      <option value="compatibility">compatibility</option>
+                    </select>
+                  </label>
+                  <label>
+                    Destination TLS profile
+                    <select id="destination-tls-profile">
+                      <option value="modern">modern</option>
+                      <option value="compatibility">compatibility</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="grid two-col">
+                  <label class="check">
+                    <input id="source-ssl" type="checkbox" checked />
+                    Source uses SSL/TLS
+                  </label>
+                  <label class="check">
+                    <input id="destination-ssl" type="checkbox" checked />
+                    Destination uses SSL/TLS
+                  </label>
+                </div>
+                <label>
+                  Include collections/mailboxes (one per line)
+                  <textarea id="include-mailboxes" rows="3" placeholder="INBOX&#10;Archive&#10;contacts/default"></textarea>
+                </label>
+                <div class="grid two-col">
+                  <label>
+                    Destination root collection/path
+                    <input id="destination-root-mailbox" type="text" value="Migrated" />
+                  </label>
+                  <label>
+                    POP3 destination mailbox
+                    <input id="pop3-destination-mailbox" type="text" value="POP3-Inbox" />
+                  </label>
+                </div>
+                <label>
+                  Folder mapping (one per line: source=destination)
+                  <textarea id="folder-mapping" rows="4" placeholder="Archive=Historical/Archive"></textarea>
+                </label>
+                <div class="grid two-col">
+                  <label>
+                    Sync mode
+                    <select id="sync-mode">
+                      <option value="full">full</option>
+                      <option value="incremental">incremental</option>
+                    </select>
+                  </label>
+                  <label id="incremental-base-job-group" hidden>
+                    Incremental base job ID (optional)
+                    <input
+                      id="incremental-base-job-id"
+                      type="text"
+                      placeholder="completed job UUID"
+                    />
+                  </label>
+                </div>
+                <p class="helper-text">
+                  Incremental mode resumes using saved mailbox cursors or an optional completed base job ID.
+                </p>
+                <div class="grid two-col">
+                  <label>
+                    Max errors before abort
+                    <input id="max-errors" type="number" min="1" value="25" />
+                  </label>
+                  <label class="check big-check">
+                    <input id="dry-run" type="checkbox" />
+                    Dry run (no writes)
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div
+              id="mode-panel-single"
+              class="mode-panel active"
+              data-mode-panel="single"
+              role="tabpanel"
+              aria-labelledby="mode-tab-single"
+            >
+              <div class="actions">
+                <button id="preflight-button" type="button" class="btn secondary">Run Preflight</button>
+                <button id="plan-button" type="button" class="btn secondary">Build Plan</button>
+                <button id="start-button" type="button" class="btn primary">Start Background Job</button>
+              </div>
+              <p id="form-feedback" class="feedback"></p>
+              <div id="preflight-output" class="preflight-output empty">No preflight result yet.</div>
+            </div>
+
+            <div
+              id="mode-panel-batch"
+              class="mode-panel"
+              data-mode-panel="batch"
+              role="tabpanel"
+              aria-labelledby="mode-tab-batch"
+              hidden
+            >
+              <h3>Batch Migration (CSV)</h3>
+              <p class="helper-text">
+                CSV header example:
+                <code>job_name,source_username,source_password,destination_username,destination_password</code>
+              </p>
+              <div class="grid two-col">
+                <label>
+                  Batch name
+                  <input id="batch-name" type="text" placeholder="customer-wave-1" />
+                </label>
+                <label>
+                  CSV file
+                  <input id="batch-csv-file" type="file" accept=".csv,text/csv" />
+                </label>
+              </div>
+              <label>
+                CSV content
+                <textarea
+                  id="batch-csv-content"
+                  rows="8"
+                  placeholder="job_name,source_username,source_password,destination_username,destination_password&#10;user-a,user-a@old.example.com,app-pass-a,user-a@new.example.com,app-pass-b"
+                ></textarea>
+              </label>
+              <div class="advanced-settings">
+                <button
+                  id="batch-advanced-toggle"
+                  type="button"
+                  class="advanced-toggle"
+                  aria-expanded="false"
+                  aria-controls="batch-advanced-panel"
+                >
+                  Show batch advanced settings
+                </button>
+                <div id="batch-advanced-panel" class="advanced-panel" hidden>
+                  <label class="check">
+                    <input id="batch-allow-partial" type="checkbox" />
+                    Start valid rows even if some rows fail validation
+                  </label>
+                  <label>
+                    Batch preflight row limit
+                    <input id="batch-preflight-limit" type="number" min="1" max="200" value="20" />
+                  </label>
+                </div>
+              </div>
+              <div class="actions">
+                <button id="batch-preview-button" type="button" class="btn secondary">Preview CSV</button>
+                <button id="batch-preflight-button" type="button" class="btn secondary">Batch Preflight</button>
+                <button id="batch-start-button" type="button" class="btn primary">Start Batch</button>
+              </div>
+              <p id="batch-feedback" class="feedback"></p>
+              <div id="batch-preview" class="batch-preview empty">No CSV preview yet.</div>
+            </div>
+          </form>
+        </article>
+
+        <aside class="panel dashboard-panel">
+          <div class="dashboard-section" data-mode-panel="single">
+            <div class="section-header">
+              <h2>Plan Preview</h2>
+              <span id="plan-summary" class="pill">No plan yet</span>
+            </div>
+            <div id="plan-output" class="plan-output"></div>
+          </div>
+
+          <div class="dashboard-section" data-mode-panel="single">
+            <div class="section-header">
+              <h2>Jobs</h2>
+              <div class="inline-actions">
+                <span id="live-indicator" class="pill">Live stream: connecting…</span>
+                <button id="refresh-jobs" type="button" class="btn ghost">Refresh</button>
+              </div>
+            </div>
+            <div id="jobs-list" class="jobs-list"></div>
+          </div>
+
+          <div class="dashboard-section" data-mode-panel="single">
+            <div class="section-header">
+              <h2>Selected Job</h2>
+              <div class="inline-actions">
+                <button id="download-report-json" type="button" class="btn ghost" disabled>Report JSON</button>
+                <button id="download-report-csv" type="button" class="btn ghost" disabled>Report CSV</button>
+              </div>
+            </div>
+            <div id="job-details" class="job-details empty">No job selected.</div>
+          </div>
+
+          <div class="dashboard-section" data-mode-panel="batch" hidden>
+            <div class="section-header">
+              <h2>Batches</h2>
+              <div class="inline-actions">
+                <span id="batch-live-indicator" class="pill">Batch stream: connecting…</span>
+                <button id="refresh-batches" type="button" class="btn ghost">Refresh</button>
+              </div>
+            </div>
+            <div id="batches-list" class="jobs-list"></div>
+          </div>
+
+          <div class="dashboard-section" data-mode-panel="batch" hidden>
+            <div class="section-header">
+              <h2>Selected Batch</h2>
+            </div>
+            <div id="batch-details" class="job-details empty">No batch selected.</div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>

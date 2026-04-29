@@ -1,0 +1,3 @@
+job_name,source_username,source_password,destination_username,destination_password,dry_run,max_errors
+wave-1-user-a,user-a@source.example.com,replace-source-pass-a,user-a@destination.example.com,replace-destination-pass-a,true,25
+wave-1-user-b,user-b@source.example.com,replace-source-pass-b,user-b@destination.example.com,replace-destination-pass-b,true,25

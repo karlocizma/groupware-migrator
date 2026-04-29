@@ -1,0 +1,42 @@
+{
+  "job_name": "imap-to-imap-migration",
+  "source": {
+    "provider_id": "custom",
+    "protocol": "imap",
+    "connection": {
+      "host": "imap.source.example.com",
+      "port": 993,
+      "username": "source-user@example.com",
+      "password": "replace-me",
+      "auth_mode": "password",
+      "use_ssl": true,
+      "tls_profile": "modern"
+    },
+    "include_mailboxes": [
+      "INBOX",
+      "Archive"
+    ]
+  },
+  "destination": {
+    "provider_id": "custom",
+    "protocol": "imap",
+    "connection": {
+      "host": "imap.destination.example.com",
+      "port": 993,
+      "username": "dest-user@example.com",
+      "password": "replace-me",
+      "auth_mode": "password",
+      "use_ssl": true,
+      "tls_profile": "modern"
+    },
+    "root_mailbox": "Migrated"
+  },
+  "folder_mapping": {
+    "Archive": "Historical/Archive"
+  },
+  "options": {
+    "dry_run": true,
+    "max_errors": 25,
+    "pop3_destination_mailbox": "POP3-Inbox"
+  }
+}
