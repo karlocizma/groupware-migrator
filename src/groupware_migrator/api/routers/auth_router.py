@@ -11,7 +11,10 @@ from groupware_migrator.api.auth import (
     require_admin,
     require_user,
 )
+from groupware_migrator.api.rate_limit import LoginRateLimiter
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password, verify_password
+
+_login_limiter = LoginRateLimiter(max_attempts=5, window_seconds=300, lockout_seconds=900)
 
 
 class LoginPayload(BaseModel):
@@ -29,6 +32,11 @@ class CreateApiKeyPayload(BaseModel):
     label: str = ""
 
 
+class ChangePasswordPayload(BaseModel):
+    current_password: str
+    new_password: str
+
+
 def _ttl_hours() -> int:
     return int(os.environ.get("JWT_TTL_HOURS", "8"))
 
@@ -38,9 +46,14 @@ def create_auth_router(state_store: SQLiteStateStore) -> APIRouter:
 
     @router.post("/auth/login")
     def login(payload: LoginPayload, request: Request, response: Response) -> dict:
+        client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+        _login_limiter.check_and_record(client_ip)
         user = state_store.get_user_by_email(payload.email)
         if not user or not verify_password(payload.password, str(user["password_hash"])):
             raise HTTPException(status_code=401, detail="Invalid email or password.")
+        if not user.get("is_active", 1):
+            raise HTTPException(status_code=403, detail="Account is deactivated.")
+        _login_limiter.clear(client_ip)
         token = create_access_token(
             {"sub": str(user["id"]), "email": str(user["email"]), "is_admin": bool(user["is_admin"])},
             secret=str(request.app.state.jwt_secret),
@@ -111,6 +124,20 @@ def create_auth_router(state_store: SQLiteStateStore) -> APIRouter:
         deleted = state_store.revoke_api_key(key_id=key_id, user_id=user_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="API key not found.")
+        return {"ok": True}
+
+    @router.post("/auth/change-password")
+    def change_password(
+        payload: ChangePasswordPayload,
+        current_user: dict = Depends(require_user),
+    ) -> dict:
+        if len(payload.new_password) < 8:
+            raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
+        user_id = str(current_user["sub"])
+        user = state_store.get_user_by_id(user_id)
+        if not user or not verify_password(payload.current_password, str(user["password_hash"])):
+            raise HTTPException(status_code=400, detail="Current password is incorrect.")
+        state_store.change_password(user_id, hash_password(payload.new_password))
         return {"ok": True}
 
     return router

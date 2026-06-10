@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groupware Migrator — Admin</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <style>
+      .admin-nav { display: flex; align-items: center; gap: 16px; padding: 10px 24px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.07); }
+      .admin-nav a { color: var(--text-muted, #8892a4); font-size: 0.9rem; text-decoration: none; }
+      .admin-nav a:hover { color: #e2e8f0; }
+      .admin-nav .nav-title { font-weight: 600; color: #e2e8f0; margin-right: 8px; }
+
+      .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-bottom: 32px; }
+      .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px 18px; }
+      .stat-label { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8892a4; margin-bottom: 6px; }
+      .stat-value { font-size: 1.8rem; font-weight: 700; color: #e2e8f0; line-height: 1; }
+      .stat-sub { font-size: 0.78rem; color: #8892a4; margin-top: 4px; }
+
+      .admin-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
+      .admin-section-header { padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 10px; }
+      .admin-section-header h2 { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; margin: 0; }
+      .admin-section-header .count-pill { background: rgba(255,255,255,0.06); border-radius: 20px; padding: 2px 10px; font-size: 0.76rem; color: #8892a4; }
+      .admin-section-body { overflow-x: auto; }
+
+      table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+      thead th { padding: 10px 16px; text-align: left; font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8892a4; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight: 500; }
+      tbody td { padding: 10px 16px; color: #c8d5ff; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+      tbody tr:last-child td { border-bottom: none; }
+      tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+      .badge-admin { background: rgba(108,143,255,0.15); color: #6c8fff; border: 1px solid rgba(108,143,255,0.3); border-radius: 6px; padding: 2px 7px; font-size: 0.72rem; font-weight: 600; }
+      .badge-active { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.25); border-radius: 6px; padding: 2px 7px; font-size: 0.72rem; }
+      .badge-inactive { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); border-radius: 6px; padding: 2px 7px; font-size: 0.72rem; }
+
+      .btn-xs { padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: transparent; color: #8892a4; cursor: pointer; transition: all 0.15s; }
+      .btn-xs:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+      .btn-xs.danger { color: #f87171; border-color: rgba(248,113,113,0.3); }
+      .btn-xs.danger:hover { background: rgba(248,113,113,0.1); }
+      .btn-xs.primary { color: #6c8fff; border-color: rgba(108,143,255,0.3); }
+      .btn-xs.primary:hover { background: rgba(108,143,255,0.1); }
+      .btn-row { display: flex; gap: 6px; }
+
+      .empty-row td { color: #8892a4; font-style: italic; text-align: center; }
+
+      .cleanup-form { padding: 16px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .cleanup-form label { font-size: 0.85rem; color: #8892a4; display: flex; align-items: center; gap: 8px; }
+      .cleanup-form input[type=number] { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 10px; color: #e2e8f0; font-size: 0.85rem; width: 80px; }
+      .cleanup-result { margin-top: 10px; font-size: 0.83rem; color: #34d399; }
+
+      .create-user-form { padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 10px; align-items: end; }
+      .create-user-form label { font-size: 0.8rem; color: #8892a4; display: flex; flex-direction: column; gap: 4px; }
+      .create-user-form input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 7px 10px; color: #e2e8f0; font-size: 0.85rem; }
+      .create-user-form .check-wrap { display: flex; align-items: center; gap: 6px; font-size: 0.83rem; color: #8892a4; padding-bottom: 2px; }
+      .feedback-line { padding: 0 20px 12px; font-size: 0.83rem; }
+      .feedback-line.ok { color: #34d399; }
+      .feedback-line.err { color: #f87171; }
+
+      @media (max-width: 760px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        .create-user-form { grid-template-columns: 1fr 1fr; }
+      }
+      @media (max-width: 600px) {
+        .stats-grid { grid-template-columns: 1fr 1fr; }
+        .admin-nav { flex-wrap: wrap; gap: 8px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background-orb orb-a"></div>
+    <div class="background-orb orb-b"></div>
+    <div class="background-orb orb-c"></div>
+
+    <nav class="admin-nav">
+      <span class="nav-title">Groupware Migrator</span>
+      <a href="/">Dashboard</a>
+      <a href="/admin" style="color:#6c8fff">Admin</a>
+      <span style="flex:1"></span>
+      <span id="nav-user" style="font-size:0.83rem;color:#8892a4"></span>
+      <button id="logout-btn" class="btn-xs">Log out</button>
+    </nav>
+
+    <div style="max-width:1100px;margin:0 auto;padding:28px 20px 80px;">
+
+      <!-- Stats -->
+      <div id="stats-grid" class="stats-grid"></div>
+
+      <!-- Users -->
+      <div class="admin-section">
+        <div class="admin-section-header">
+          <h2>Users</h2>
+          <span id="users-count" class="count-pill">—</span>
+          <span style="flex:1"></span>
+          <button id="toggle-create-user" class="btn-xs primary">+ New user</button>
+        </div>
+        <div id="create-user-panel" hidden>
+          <form id="create-user-form" class="create-user-form" autocomplete="off">
+            <label>Email <input id="new-email" type="email" required placeholder="user@example.com" /></label>
+            <label>Password <input id="new-password" type="password" required placeholder="min 8 chars" /></label>
+            <div class="check-wrap">
+              <input id="new-is-admin" type="checkbox" />
+              <label for="new-is-admin">Admin</label>
+            </div>
+            <button type="submit" class="btn-xs primary" id="create-user-btn">Create</button>
+          </form>
+          <div id="create-user-feedback" class="feedback-line" style="display:none"></div>
+        </div>
+        <div class="admin-section-body">
+          <table>
+            <thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Audit Log -->
+      <div class="admin-section">
+        <div class="admin-section-header">
+          <h2>Admin Audit Log</h2>
+          <span id="audit-count" class="count-pill">—</span>
+          <span style="flex:1"></span>
+          <button id="refresh-audit" class="btn-xs">Refresh</button>
+        </div>
+        <div class="admin-section-body">
+          <table>
+            <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Data Cleanup -->
+      <div class="admin-section">
+        <div class="admin-section-header"><h2>Data Retention Cleanup</h2></div>
+        <div class="cleanup-form">
+          <label>Delete completed/failed jobs older than
+            <input type="number" id="cleanup-days" value="90" min="1" max="3650" />
+            days
+          </label>
+          <button id="cleanup-btn" class="btn-xs danger">Run cleanup</button>
+          <span id="cleanup-result" class="cleanup-result" style="display:none"></span>
+        </div>
+      </div>
+
+    </div>
+
+    <script type="module" src="/assets/js/admin.js"></script>
+  </body>
+</html>

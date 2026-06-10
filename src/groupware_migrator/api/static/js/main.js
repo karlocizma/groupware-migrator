@@ -564,6 +564,7 @@ function renderJobDetails(job) {
   const status = statusClass(job.status, job.running);
   const estimated = Number(job.plan_summary?.total_estimated_items ?? job.plan_summary?.total_estimated_messages ?? 0);
   const workload = job.workload || 'mail';
+  const canCancel = job.status === 'running' || job.status === 'pending';
   panel.innerHTML = `
     <div class="job-head">
       <div>
@@ -583,9 +584,25 @@ function renderJobDetails(job) {
     </div>
     <div class="metric"><strong>Recent audit events</strong><span data-role="events">Loading events…</span></div>
     ${job.last_error ? `<div class="error-box"><strong>Last error:</strong><br>${job.last_error}</div>` : ''}
+    ${canCancel ? `<div style="margin-top:10px"><button id="cancel-job-btn" class="btn secondary" style="font-size:0.82rem;padding:5px 14px">Cancel job</button></div>` : ''}
   `;
   setReportButtonsEnabled(true);
   loadRecentEvents(job.job_id);
+  const cancelBtn = document.getElementById('cancel-job-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', async () => {
+      if (!confirm('Cancel this job?')) return;
+      cancelBtn.disabled = true;
+      cancelBtn.textContent = 'Cancelling…';
+      try {
+        await requestJSON(`${API_BASE}/jobs/${job.job_id}/cancel`, { method: 'POST' });
+      } catch (err) {
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = 'Cancel job';
+        alert(err.message || 'Failed to cancel job.');
+      }
+    });
+  }
 }
 
 function renderJobsList(items) {
@@ -1023,6 +1040,15 @@ function wireFormPersistence() {
 }
 
 async function bootstrap() {
+  try {
+    const me = await requestJSON('/auth/me');
+    if (me.is_admin) {
+      const adminLink = document.getElementById('admin-link');
+      if (adminLink) adminLink.style.display = 'inline-block';
+    }
+  } catch (_) {
+    // Non-critical — admin link stays hidden
+  }
   wireInteractions();
   wireFormPersistence();
   setUIMode(state.uiMode);

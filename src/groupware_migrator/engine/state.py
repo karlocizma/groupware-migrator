@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -206,15 +206,30 @@ class SQLiteStateStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_api_keys_user
                     ON api_keys(user_id);
+                CREATE TABLE IF NOT EXISTS admin_audit_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    target_id TEXT,
+                    details_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_admin_audit_created
+                    ON admin_audit_events(created_at);
                 """
             )
-        # Idempotent migration: add user_id column to jobs and batches
+        # Idempotent migrations
         for table in ("jobs", "batches"):
             try:
                 with self._lock, self._connection() as connection:
                     connection.execute(f"ALTER TABLE {table} ADD COLUMN user_id TEXT")
             except Exception:
-                pass  # Column already exists
+                pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+        except Exception:
+            pass
 
     def create_job(self, request: MigrationRequest, plan: MigrationPlan, user_id: str | None = None) -> str:
         job_id = str(uuid.uuid4())
@@ -406,6 +421,24 @@ class SQLiteStateStore:
             )
             return cursor.rowcount
 
+    def cancel_job(self, job_id: str) -> bool:
+        """Mark a pending job cancelled. Returns True if the job was updated."""
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE jobs SET status = ?, finished_at = ?, updated_at = ?
+                WHERE job_id = ? AND status = ?
+                """,
+                (
+                    JobStatus.CANCELLED.value,
+                    _utcnow_iso(),
+                    _utcnow_iso(),
+                    job_id,
+                    JobStatus.PENDING.value,
+                ),
+            )
+            return cursor.rowcount > 0
+
     def create_user(self, *, email: str, password_hash: str, is_admin: bool = False) -> str:
         user_id = str(uuid.uuid4())
         now = _utcnow_iso()
@@ -507,6 +540,143 @@ class SQLiteStateStore:
                 (key_id, user_id),
             )
             return cursor.rowcount > 0
+
+    def update_user(self, user_id: str, *, is_admin: bool | None = None, is_active: bool | None = None) -> bool:
+        updates = []
+        params: list[Any] = []
+        if is_admin is not None:
+            updates.append("is_admin = ?")
+            params.append(1 if is_admin else 0)
+        if is_active is not None:
+            updates.append("is_active = ?")
+            params.append(1 if is_active else 0)
+        if not updates:
+            return False
+        params.append(user_id)
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                f"UPDATE users SET {', '.join(updates)} WHERE id = ?",
+                tuple(params),
+            )
+            return cursor.rowcount > 0
+
+    def change_password(self, user_id: str, new_password_hash: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (new_password_hash, user_id),
+            )
+            return cursor.rowcount > 0
+
+    def log_admin_action(
+        self,
+        *,
+        admin_id: str,
+        action: str,
+        target_id: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO admin_audit_events (admin_id, action, target_id, details_json, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (admin_id, action, target_id, json.dumps(details or {}, sort_keys=True), _utcnow_iso()),
+            )
+
+    def list_admin_audit_events(self, *, limit: int = 100) -> list[dict[str, Any]]:
+        safe_limit = max(min(int(limit), 500), 1)
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                """
+                SELECT id, admin_id, action, target_id, details_json, created_at
+                FROM admin_audit_events ORDER BY id DESC LIMIT ?
+                """,
+                (safe_limit,),
+            )
+            rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["details"] = json.loads(item.pop("details_json"))
+            except json.JSONDecodeError:
+                item.pop("details_json", None)
+                item["details"] = {}
+            result.append(item)
+        return result
+
+    def system_stats(self) -> dict[str, Any]:
+        cutoff_7d = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        cutoff_30d = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        with self._lock, self._connection() as connection:
+            users_total = connection.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+            jobs_total = connection.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
+            jobs_running = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE status = 'running'"
+            ).fetchone()[0]
+            jobs_completed = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE status = 'completed'"
+            ).fetchone()[0]
+            jobs_failed = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE status = 'failed'"
+            ).fetchone()[0]
+            jobs_7d = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE created_at > ?", (cutoff_7d,)
+            ).fetchone()[0]
+            completed_7d = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE status = 'completed' AND created_at > ?",
+                (cutoff_7d,),
+            ).fetchone()[0]
+            jobs_30d = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE created_at > ?", (cutoff_30d,)
+            ).fetchone()[0]
+            completed_30d = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE status = 'completed' AND created_at > ?",
+                (cutoff_30d,),
+            ).fetchone()[0]
+            items_migrated = connection.execute(
+                "SELECT COALESCE(SUM(migrated_count), 0) FROM jobs"
+            ).fetchone()[0]
+            batches_total = connection.execute("SELECT COUNT(*) FROM batches").fetchone()[0]
+        return {
+            "users_total": int(users_total),
+            "jobs_total": int(jobs_total),
+            "jobs_running": int(jobs_running),
+            "jobs_completed": int(jobs_completed),
+            "jobs_failed": int(jobs_failed),
+            "jobs_last_7d": int(jobs_7d),
+            "success_rate_7d_pct": round(completed_7d / jobs_7d * 100) if jobs_7d > 0 else 0,
+            "jobs_last_30d": int(jobs_30d),
+            "success_rate_30d_pct": round(completed_30d / jobs_30d * 100) if jobs_30d > 0 else 0,
+            "items_migrated_total": int(items_migrated),
+            "batches_total": int(batches_total),
+        }
+
+    def cleanup_old_records(self, *, older_than_days: int) -> dict[str, int]:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=max(older_than_days, 1))).isoformat()
+        with self._lock, self._connection() as connection:
+            jobs_cursor = connection.execute(
+                """
+                DELETE FROM jobs WHERE status IN ('completed', 'failed', 'cancelled')
+                AND finished_at IS NOT NULL AND finished_at < ?
+                """,
+                (cutoff,),
+            )
+            batches_cursor = connection.execute(
+                "DELETE FROM batches WHERE updated_at < ?",
+                (cutoff,),
+            )
+            events_cursor = connection.execute(
+                "DELETE FROM admin_audit_events WHERE created_at < ?",
+                (cutoff,),
+            )
+        return {
+            "jobs_deleted": jobs_cursor.rowcount,
+            "batches_deleted": batches_cursor.rowcount,
+            "admin_events_deleted": events_cursor.rowcount,
+        }
 
     def increment_counters(
         self,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime
 
 from groupware_migrator.connectors.base import DestinationConnector, SourceConnector
@@ -86,6 +87,7 @@ class MigrationRunner:
         source_connector: SourceConnector | None = None,
         destination_connector: DestinationConnector | None = None,
         resume_job_id: str | None = None,
+        stop_event: threading.Event | None = None,
     ) -> MigrationReport:
         source_connector = source_connector or create_source_connector(request)
         destination_connector = destination_connector or create_destination_connector(request)
@@ -136,6 +138,13 @@ class MigrationRunner:
             source_connector.validate()
             destination_connector.validate()
             for collection_plan in plan.items:
+                if stop_event and stop_event.is_set():
+                    self._state_store.set_job_status(job_id, JobStatus.CANCELLED, set_finished=True)
+                    self._audit(job_id, "job_cancelled", payload={"reason": "Cancelled by user."})
+                    job_row = self._state_store.get_job(job_id)
+                    if not job_row:
+                        raise RuntimeError(f"Unable to load job state for {job_id}.")
+                    return self._build_report(job_row, error_messages)
                 collection_migrated = 0
                 collection_skipped = 0
                 collection_failed = 0

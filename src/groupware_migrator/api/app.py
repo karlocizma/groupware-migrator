@@ -5,11 +5,12 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from groupware_migrator.api.auth import require_user
+from groupware_migrator.api.routers.admin_router import create_admin_router
 from groupware_migrator.api.routers.auth_router import create_auth_router
 from groupware_migrator.api.routers.batches import create_batches_router
 from groupware_migrator.api.routers.jobs import create_jobs_router
@@ -87,11 +88,23 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
         except Exception as exc:
             logging.getLogger(__name__).error("Error during background worker shutdown: %s", exc)
 
-    app = FastAPI(title="Groupware Migrator", version="0.4.0", lifespan=lifespan)
+    app = FastAPI(title="Groupware Migrator", version="0.5.0", lifespan=lifespan)
     app.state.state_store = state_store
     app.state.runner = runner
     app.state.background_jobs = background_jobs
     app.state.jwt_secret = jwt_secret
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'",
+        )
+        return response
 
     static_dir = Path(__file__).resolve().parent / "static"
     if static_dir.exists():
@@ -111,9 +124,24 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
             raise HTTPException(status_code=404, detail="Login page not found.")
         return FileResponse(login_file)
 
-    @app.get("/health")
-    def health() -> dict:
-        return {"status": "ok"}
+    @app.get("/admin")
+    def admin_page() -> FileResponse:
+        admin_file = static_dir / "admin.html"
+        if not admin_file.exists():
+            raise HTTPException(status_code=404, detail="Admin page not found.")
+        return FileResponse(admin_file)
+
+    @app.get("/health/live")
+    def health_live() -> dict:
+        return {"status": "live"}
+
+    @app.get("/health/ready")
+    def health_ready() -> dict:
+        try:
+            state_store.count_users()
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"Database not ready: {exc}") from exc
+        return {"status": "ready"}
 
     # Auth router — public (no auth required)
     auth_router = create_auth_router(state_store)
@@ -124,10 +152,13 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     jobs_router = create_jobs_router(state_store, background_jobs, runner)
     batches_router = create_batches_router(state_store, background_jobs)
     providers_router = create_providers_router()
+    admin_router = create_admin_router(state_store)
 
     for prefix in ("/api", ""):
         app.include_router(jobs_router, prefix=prefix, dependencies=auth_dep)
         app.include_router(batches_router, prefix=prefix, dependencies=auth_dep)
         app.include_router(providers_router, prefix=prefix, dependencies=auth_dep)
+
+    app.include_router(admin_router, prefix="/api", dependencies=auth_dep)
 
     return app

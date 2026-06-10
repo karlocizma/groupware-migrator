@@ -184,6 +184,22 @@ def create_jobs_router(
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+    @router.post("/jobs/{job_id}/cancel")
+    def cancel_job(
+        job_id: str,
+        current_user: dict = Depends(require_user),
+    ) -> dict:
+        job_row = state_store.get_job(job_id)
+        if not job_row:
+            raise HTTPException(status_code=404, detail="Job not found.")
+        if not current_user.get("is_admin"):
+            if str(job_row.get("user_id", "")) != str(current_user.get("sub", "")):
+                raise HTTPException(status_code=403, detail="Access denied.")
+        actioned = background_jobs.cancel_job(job_id)
+        if not actioned:
+            raise HTTPException(status_code=409, detail="Job cannot be cancelled in its current state.")
+        return {"ok": True, "job_id": job_id}
+
     @router.get("/jobs/{job_id}")
     def get_job(job_id: str) -> dict:
         job_row = state_store.get_job(job_id)
