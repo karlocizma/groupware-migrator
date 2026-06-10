@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
+from groupware_migrator.api.auth import require_user
 from groupware_migrator.api.schemas import BatchPayload, BatchPreflightPayload
 from groupware_migrator.engine.background import BackgroundJobManager
 from groupware_migrator.engine.batch import build_batch_preview, build_batch_rows
@@ -155,7 +156,10 @@ def create_batches_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/batches/start")
-    def start_batch(payload: BatchPayload) -> dict:
+    def start_batch(
+        payload: BatchPayload,
+        current_user: dict = Depends(require_user),
+    ) -> dict:
         try:
             rows = build_batch_rows(payload.csv_content, base_request_payload=payload.base_request)
             preview = build_batch_preview(rows)
@@ -173,8 +177,9 @@ def create_batches_router(
             valid_rows = [row for row in rows if row.valid and row.request is not None]
             if not valid_rows:
                 raise ValueError("No valid CSV rows to start.")
+            user_id = str(current_user.get("sub", "")) or None
             batch_id = state_store.create_batch(
-                batch_name=payload.batch_name, total_rows=preview["total_rows"]
+                batch_name=payload.batch_name, total_rows=preview["total_rows"], user_id=user_id
             )
             for row in rows:
                 if not row.valid or row.request is None:
@@ -223,21 +228,28 @@ def create_batches_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.get("/batches")
-    def list_batches(limit: int = Query(default=20, ge=1, le=200)) -> dict:
-        rows = state_store.list_batches(limit=limit)
+    def list_batches(
+        limit: int = Query(default=20, ge=1, le=200),
+        current_user: dict = Depends(require_user),
+    ) -> dict:
+        user_id = None if current_user.get("is_admin") else str(current_user.get("sub", ""))
+        rows = state_store.list_batches(limit=limit, user_id=user_id)
         return {"items": [_batch_response(row) for row in rows]}
 
     @router.get("/batches/stream")
     async def batches_stream(
         request: Request,
         limit: int = Query(default=20, ge=1, le=200),
+        current_user: dict = Depends(require_user),
     ) -> StreamingResponse:
+        user_id = None if current_user.get("is_admin") else str(current_user.get("sub", ""))
+
         async def event_generator():
             yield "retry: 1500\n\n"
             while True:
                 if await request.is_disconnected():
                     break
-                rows = state_store.list_batches(limit=limit)
+                rows = state_store.list_batches(limit=limit, user_id=user_id)
                 yield _sse_message("batches", {"items": [_batch_response(row) for row in rows]})
                 await asyncio.sleep(1.5)
         return StreamingResponse(event_generator(), media_type="text/event-stream")

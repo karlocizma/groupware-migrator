@@ -43,8 +43,8 @@ class BackgroundJobManager:
             self._futures[job_id] = future
             future.add_done_callback(lambda _future: self._forget_job(job_id))
 
-    def start_job(self, request: MigrationRequest) -> str:
-        job_id = self._state_store.create_job(request=request, plan=MigrationPlan())
+    def start_job(self, request: MigrationRequest, user_id: str | None = None) -> str:
+        job_id = self._state_store.create_job(request=request, plan=MigrationPlan(), user_id=user_id)
         self._submit(job_id=job_id, request=request)
         return job_id
 

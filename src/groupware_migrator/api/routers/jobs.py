@@ -3,16 +3,17 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse, StreamingResponse
 
+from groupware_migrator.api.auth import require_user
+from groupware_migrator.api.schemas import JobPayload, ResumeJobPayload
 from groupware_migrator.connectors.factory import create_source_connector
 from groupware_migrator.engine.background import BackgroundJobManager
 from groupware_migrator.engine.preflight import run_preflight
 from groupware_migrator.engine.reporting import build_job_report, build_job_report_csv
 from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.state import SQLiteStateStore
-from groupware_migrator.api.schemas import JobPayload, ResumeJobPayload
 from groupware_migrator.models import MigrationRequest
 
 
@@ -109,10 +110,14 @@ def create_jobs_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/jobs/start")
-    def start_background_job(payload: JobPayload) -> dict:
+    def start_background_job(
+        payload: JobPayload,
+        current_user: dict = Depends(require_user),
+    ) -> dict:
         try:
             request = _migration_request_from_payload(payload.model_dump())
-            job_id = background_jobs.start_job(request=request)
+            user_id = str(current_user.get("sub", "")) or None
+            job_id = background_jobs.start_job(request=request, user_id=user_id)
             job_row = state_store.get_job(job_id)
             if not job_row:
                 raise RuntimeError("Unable to read background job after creation.")
@@ -133,8 +138,12 @@ def create_jobs_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.get("/jobs")
-    def list_jobs(limit: int = Query(default=20, ge=1, le=200)) -> dict:
-        rows = state_store.list_jobs(limit=limit)
+    def list_jobs(
+        limit: int = Query(default=20, ge=1, le=200),
+        current_user: dict = Depends(require_user),
+    ) -> dict:
+        user_id = None if current_user.get("is_admin") else str(current_user.get("sub", ""))
+        rows = state_store.list_jobs(limit=limit, user_id=user_id)
         return {
             "items": [
                 _job_response(
@@ -150,13 +159,16 @@ def create_jobs_router(
     async def jobs_stream(
         request: Request,
         limit: int = Query(default=30, ge=1, le=200),
+        current_user: dict = Depends(require_user),
     ) -> StreamingResponse:
+        user_id = None if current_user.get("is_admin") else str(current_user.get("sub", ""))
+
         async def event_generator():
             yield "retry: 1500\n\n"
             while True:
                 if await request.is_disconnected():
                     break
-                rows = state_store.list_jobs(limit=limit)
+                rows = state_store.list_jobs(limit=limit, user_id=user_id)
                 payload = {
                     "items": [
                         _job_response(
