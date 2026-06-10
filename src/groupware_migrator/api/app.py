@@ -14,7 +14,7 @@ from groupware_migrator.engine.background import BackgroundJobManager
 from groupware_migrator.engine.preflight import run_preflight
 from groupware_migrator.engine.reporting import build_job_report, build_job_report_csv
 from groupware_migrator.engine.runner import MigrationRunner
-from groupware_migrator.engine.state import SQLiteStateStore
+from groupware_migrator.engine.state import SQLiteStateStore, derive_batch_status
 from groupware_migrator.models import JobStatus, MigrationPlan, MigrationRequest
 from groupware_migrator.providers import get_provider_presets
 
@@ -75,23 +75,6 @@ def _migration_request_from_payload(payload: dict) -> MigrationRequest:
 def _sse_message(event: str, payload: dict) -> str:
     encoded = json.dumps(payload, separators=(",", ":"))
     return f"event: {event}\ndata: {encoded}\n\n"
-def _batch_status_from_counts(
-    *,
-    total_rows: int,
-    pending_rows: int,
-    running_rows: int,
-    completed_rows: int,
-    failed_rows: int,
-) -> str:
-    if total_rows <= 0:
-        return JobStatus.PENDING.value
-    if completed_rows + failed_rows >= total_rows:
-        return JobStatus.FAILED.value if failed_rows > 0 else JobStatus.COMPLETED.value
-    if running_rows > 0:
-        return JobStatus.RUNNING.value
-    if pending_rows > 0:
-        return JobStatus.PENDING.value
-    return JobStatus.RUNNING.value
 
 
 def _batch_item_response(item_row: dict, *, running: bool) -> dict:
@@ -168,7 +151,7 @@ def _batch_response(batch_row: dict, *, items: list[dict] | None = None) -> dict
                 "migrated_count": migrated_count,
                 "skipped_count": skipped_count,
                 "message_failed_count": message_failed_count,
-                "status": _batch_status_from_counts(
+                "status": derive_batch_status(
                     total_rows=total_rows,
                     pending_rows=pending_rows,
                     running_rows=running_rows,

@@ -15,7 +15,7 @@ from groupware_migrator.models import JobStatus, MigrationPlan, MigrationRequest
 
 def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
-def _derive_batch_status(
+def derive_batch_status(
     *,
     total_rows: int,
     pending_rows: int,
@@ -693,7 +693,7 @@ class SQLiteStateStore:
         batch_id = str(base_row["batch_id"])
         counts = self._batch_summary_counts(batch_id)
         total_rows = int(base_row.get("total_rows") or counts["total_rows_actual"])
-        status = _derive_batch_status(
+        status = derive_batch_status(
             total_rows=total_rows,
             pending_rows=counts["pending_rows"],
             running_rows=counts["running_rows"],
