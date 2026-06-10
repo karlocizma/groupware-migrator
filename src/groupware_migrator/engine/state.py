@@ -5,12 +5,27 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import secrets
 import sqlite3
 import threading
 import uuid
 from typing import Any
 
+import bcrypt as _bcrypt
+
 from groupware_migrator.models import JobStatus, MigrationPlan, MigrationRequest
+
+
+def hash_password(password: str) -> str:
+    pw_bytes = password.encode("utf-8")[:72]
+    return _bcrypt.hashpw(pw_bytes, _bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    try:
+        return _bcrypt.checkpw(password.encode("utf-8")[:72], hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def _utcnow_iso() -> str:
@@ -174,10 +189,34 @@ class SQLiteStateStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_batch_items_batch_row
                     ON batch_items(batch_id, row_number);
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    is_admin INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS api_keys (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    key_hash TEXT NOT NULL UNIQUE,
+                    label TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    last_used_at TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_api_keys_user
+                    ON api_keys(user_id);
                 """
             )
+        # Idempotent migration: add user_id column to jobs and batches
+        for table in ("jobs", "batches"):
+            try:
+                with self._lock, self._connection() as connection:
+                    connection.execute(f"ALTER TABLE {table} ADD COLUMN user_id TEXT")
+            except Exception:
+                pass  # Column already exists
 
-    def create_job(self, request: MigrationRequest, plan: MigrationPlan) -> str:
+    def create_job(self, request: MigrationRequest, plan: MigrationPlan, user_id: str | None = None) -> str:
         job_id = str(uuid.uuid4())
         now = _utcnow_iso()
         request_json = json.dumps(request.to_dict(redact_password=True), sort_keys=True)
@@ -195,8 +234,9 @@ class SQLiteStateStore:
                     plan_json,
                     dry_run,
                     created_at,
-                    updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    updated_at,
+                    user_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job_id,
@@ -209,6 +249,7 @@ class SQLiteStateStore:
                     1 if request.options.dry_run else 0,
                     now,
                     now,
+                    user_id,
                 ),
             )
         return job_id
@@ -227,18 +268,19 @@ class SQLiteStateStore:
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def list_jobs(self, *, limit: int = 20) -> list[dict[str, Any]]:
+    def list_jobs(self, *, limit: int = 20, user_id: str | None = None) -> list[dict[str, Any]]:
         safe_limit = max(min(int(limit), 500), 1)
         with self._lock, self._connection() as connection:
-            cursor = connection.execute(
-                """
-                SELECT *
-                FROM jobs
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (safe_limit,),
-            )
+            if user_id is not None:
+                cursor = connection.execute(
+                    "SELECT * FROM jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                    (user_id, safe_limit),
+                )
+            else:
+                cursor = connection.execute(
+                    "SELECT * FROM jobs ORDER BY created_at DESC LIMIT ?",
+                    (safe_limit,),
+                )
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
 
@@ -363,6 +405,108 @@ class SQLiteStateStore:
                 ),
             )
             return cursor.rowcount
+
+    def create_user(self, *, email: str, password_hash: str, is_admin: bool = False) -> str:
+        user_id = str(uuid.uuid4())
+        now = _utcnow_iso()
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, email, password_hash, is_admin, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, email.lower().strip(), password_hash, 1 if is_admin else 0, now),
+            )
+        return user_id
+
+    def get_user_by_email(self, email: str) -> dict[str, Any] | None:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT * FROM users WHERE email = ?", (email.lower().strip(),)
+            )
+            row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def get_user_by_id(self, user_id: str) -> dict[str, Any] | None:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+            row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def count_users(self) -> int:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute("SELECT COUNT(*) FROM users")
+            row = cursor.fetchone()
+        return int(row[0]) if row else 0
+
+    def list_users(self) -> list[dict[str, Any]]:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT id, email, is_admin, created_at FROM users ORDER BY created_at ASC"
+            )
+            rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    def create_api_key(self, *, user_id: str, label: str = "") -> tuple[str, str]:
+        key_id = str(uuid.uuid4())
+        raw_key = secrets.token_urlsafe(32)
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        now = _utcnow_iso()
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO api_keys (id, user_id, key_hash, label, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (key_id, user_id, key_hash, label, now),
+            )
+        return key_id, raw_key
+
+    def validate_api_key(self, raw_key: str) -> dict[str, Any] | None:
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                """
+                SELECT k.id AS key_id, u.id AS user_id, u.email, u.is_admin
+                FROM api_keys k
+                JOIN users u ON k.user_id = u.id
+                WHERE k.key_hash = ?
+                """,
+                (key_hash,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            connection.execute(
+                "UPDATE api_keys SET last_used_at = ? WHERE id = ?",
+                (_utcnow_iso(), str(row["key_id"])),
+            )
+        return {
+            "sub": str(row["user_id"]),
+            "email": str(row["email"]),
+            "is_admin": bool(row["is_admin"]),
+        }
+
+    def list_api_keys(self, *, user_id: str) -> list[dict[str, Any]]:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                """
+                SELECT id, label, created_at, last_used_at
+                FROM api_keys WHERE user_id = ?
+                ORDER BY created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    def revoke_api_key(self, *, key_id: str, user_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM api_keys WHERE id = ? AND user_id = ?",
+                (key_id, user_id),
+            )
+            return cursor.rowcount > 0
 
     def increment_counters(
         self,
@@ -557,7 +701,7 @@ class SQLiteStateStore:
                 source_id=source_id,
             )
 
-    def create_batch(self, *, batch_name: str | None, total_rows: int) -> str:
+    def create_batch(self, *, batch_name: str | None, total_rows: int, user_id: str | None = None) -> str:
         batch_id = str(uuid.uuid4())
         now = _utcnow_iso()
         with self._lock, self._connection() as connection:
@@ -568,8 +712,9 @@ class SQLiteStateStore:
                     batch_name,
                     total_rows,
                     created_at,
-                    updated_at
-                ) VALUES (?, ?, ?, ?, ?)
+                    updated_at,
+                    user_id
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     batch_id,
@@ -577,6 +722,7 @@ class SQLiteStateStore:
                     max(int(total_rows), 0),
                     now,
                     now,
+                    user_id,
                 ),
             )
         return batch_id
@@ -637,18 +783,19 @@ class SQLiteStateStore:
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def _list_batch_base_rows(self, *, limit: int = 20) -> list[dict[str, Any]]:
+    def _list_batch_base_rows(self, *, limit: int = 20, user_id: str | None = None) -> list[dict[str, Any]]:
         safe_limit = max(min(int(limit), 200), 1)
         with self._lock, self._connection() as connection:
-            cursor = connection.execute(
-                """
-                SELECT *
-                FROM batches
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (safe_limit,),
-            )
+            if user_id is not None:
+                cursor = connection.execute(
+                    "SELECT * FROM batches WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                    (user_id, safe_limit),
+                )
+            else:
+                cursor = connection.execute(
+                    "SELECT * FROM batches ORDER BY created_at DESC LIMIT ?",
+                    (safe_limit,),
+                )
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
 
@@ -744,8 +891,8 @@ class SQLiteStateStore:
             return None
         return self._batch_summary_row(base_row)
 
-    def list_batches(self, *, limit: int = 20) -> list[dict[str, Any]]:
-        base_rows = self._list_batch_base_rows(limit=limit)
+    def list_batches(self, *, limit: int = 20, user_id: str | None = None) -> list[dict[str, Any]]:
+        base_rows = self._list_batch_base_rows(limit=limit, user_id=user_id)
         return [self._batch_summary_row(base_row) for base_row in base_rows]
 
     def list_batch_items(self, batch_id: str) -> list[dict[str, Any]]:
