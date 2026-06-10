@@ -12,7 +12,7 @@ from groupware_migrator.engine.preflight import run_preflight
 from groupware_migrator.engine.reporting import build_job_report, build_job_report_csv
 from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.state import SQLiteStateStore
-from groupware_migrator.models import MigrationPlan, MigrationRequest
+from groupware_migrator.models import MigrationRequest
 
 
 def _parse_json_blob(raw_payload: str) -> dict:

@@ -5,7 +5,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -63,7 +63,6 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     def ui_index() -> FileResponse:
         index_file = static_dir / "index.html"
         if not index_file.exists():
-            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="UI assets not found.")
         return FileResponse(index_file)
 
