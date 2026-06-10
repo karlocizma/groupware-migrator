@@ -23,7 +23,7 @@ def _parse_json_blob(raw_payload: str) -> dict:
 
 
 def _migration_request_from_payload(payload: dict) -> MigrationRequest:
-    request_payload = payload.get("request", payload)
+    request_payload = payload.get("request") or payload
     return MigrationRequest.from_dict(request_payload)
 
 

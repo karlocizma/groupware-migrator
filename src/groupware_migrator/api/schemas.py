@@ -20,6 +20,7 @@ class ResumeJobPayload(BaseModel):
 
 class BatchPayload(BaseModel):
     """Base envelope for batch endpoints."""
+    model_config = ConfigDict(extra="ignore")
     csv_content: str
     base_request: dict
     batch_name: str | None = None
