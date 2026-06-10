@@ -14,10 +14,15 @@ from groupware_migrator.api.routers.admin_router import create_admin_router
 from groupware_migrator.api.routers.auth_router import create_auth_router
 from groupware_migrator.api.routers.batches import create_batches_router
 from groupware_migrator.api.routers.jobs import create_jobs_router
+from groupware_migrator.api.routers.orgs_router import create_orgs_router
 from groupware_migrator.api.routers.providers import create_providers_router
+from groupware_migrator.api.routers.scheduler_router import create_scheduler_router
+from groupware_migrator.api.routers.webhooks_router import create_webhooks_router
 from groupware_migrator.engine.background import BackgroundJobManager
 from groupware_migrator.engine.runner import MigrationRunner
+from groupware_migrator.engine.scheduler import SchedulerThread
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
+from groupware_migrator.engine.webhooks import WebhookDeliveryManager
 
 
 def _configure_logging() -> None:
@@ -65,7 +70,11 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
 
     state_store = SQLiteStateStore(Path(state_db_path))
     runner = MigrationRunner(state_store=state_store)
-    background_jobs = BackgroundJobManager(state_store=state_store, runner=runner)
+    webhook_manager = WebhookDeliveryManager(state_store)
+    background_jobs = BackgroundJobManager(
+        state_store=state_store, runner=runner, webhook_manager=webhook_manager
+    )
+    scheduler = SchedulerThread(state_store=state_store, job_manager=background_jobs)
     jwt_secret = _get_jwt_secret()
 
     @asynccontextmanager
@@ -82,7 +91,15 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
             _bootstrap_admin(state_store)
         except Exception as exc:
             logging.getLogger(__name__).error("Admin bootstrap failed: %s", exc)
+        try:
+            scheduler.start()
+        except Exception as exc:
+            logging.getLogger(__name__).error("Failed to start scheduler: %s", exc)
         yield
+        try:
+            scheduler.stop()
+        except Exception as exc:
+            logging.getLogger(__name__).error("Error stopping scheduler: %s", exc)
         drain_timeout = float(os.environ.get("SHUTDOWN_DRAIN_TIMEOUT", "30"))
         try:
             still_running = background_jobs.drain(drain_timeout)
@@ -98,11 +115,13 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
         except Exception as exc:
             logging.getLogger(__name__).error("Error during background worker shutdown: %s", exc)
 
-    app = FastAPI(title="Groupware Migrator", version="0.5.0", lifespan=lifespan)
+    app = FastAPI(title="Groupware Migrator", version="0.6.0", lifespan=lifespan)
     app.state.state_store = state_store
     app.state.runner = runner
     app.state.background_jobs = background_jobs
     app.state.jwt_secret = jwt_secret
+    app.state.webhook_manager = webhook_manager
+    app.state.scheduler = scheduler
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next) -> Response:
@@ -141,6 +160,20 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
             raise HTTPException(status_code=404, detail="Admin page not found.")
         return FileResponse(admin_file)
 
+    @app.get("/scheduler")
+    def scheduler_page() -> FileResponse:
+        page_file = static_dir / "scheduler.html"
+        if not page_file.exists():
+            raise HTTPException(status_code=404, detail="Scheduler page not found.")
+        return FileResponse(page_file)
+
+    @app.get("/orgs")
+    def orgs_page() -> FileResponse:
+        page_file = static_dir / "orgs.html"
+        if not page_file.exists():
+            raise HTTPException(status_code=404, detail="Organizations page not found.")
+        return FileResponse(page_file)
+
     @app.get("/health/live")
     def health_live() -> dict:
         return {"status": "live"}
@@ -163,12 +196,21 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     batches_router = create_batches_router(state_store, background_jobs)
     providers_router = create_providers_router()
     admin_router = create_admin_router(state_store)
+    scheduler_router = create_scheduler_router(state_store)
+    webhooks_router = create_webhooks_router(state_store)
+    orgs_router = create_orgs_router(state_store)
 
-    for prefix in ("/api", ""):
+    # Mount under /api and /api/v1 (v1 is the canonical path; /api is the legacy alias)
+    for prefix in ("/api", "/api/v1", ""):
         app.include_router(jobs_router, prefix=prefix, dependencies=auth_dep)
         app.include_router(batches_router, prefix=prefix, dependencies=auth_dep)
         app.include_router(providers_router, prefix=prefix, dependencies=auth_dep)
 
-    app.include_router(admin_router, prefix="/api", dependencies=auth_dep)
+    # Admin + new routers mounted under /api and /api/v1
+    for prefix in ("/api", "/api/v1"):
+        app.include_router(admin_router, prefix=prefix, dependencies=auth_dep)
+        app.include_router(scheduler_router, prefix=prefix, dependencies=auth_dep)
+        app.include_router(webhooks_router, prefix=prefix, dependencies=auth_dep)
+        app.include_router(orgs_router, prefix=prefix, dependencies=auth_dep)
 
     return app

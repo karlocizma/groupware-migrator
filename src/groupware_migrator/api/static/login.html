@@ -65,11 +65,20 @@
         <label for="password">Password</label>
         <input id="password" type="password" autocomplete="current-password" required placeholder="••••••••" />
       </div>
+      <div class="field" id="totp-field" style="display:none">
+        <label for="totp-code">Authenticator code</label>
+        <input id="totp-code" type="text" inputmode="numeric" maxlength="8" placeholder="6-digit code or recovery code" autocomplete="one-time-code" style="letter-spacing:0.1em;font-size:1.1rem;text-align:center" />
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:6px">Enter the code from your authenticator app, or a recovery code.</p>
+      </div>
       <button type="submit" id="submit-btn">Sign In</button>
       <div class="error" id="error-msg"></div>
     </form>
   </div>
   <script>
+    let _totpRequired = false;
+    let _email = '';
+    let _password = '';
+
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('submit-btn');
@@ -77,20 +86,32 @@
       btn.disabled = true;
       btn.textContent = 'Signing in…';
       errEl.classList.remove('visible');
+
+      const email = _totpRequired ? _email : document.getElementById('email').value;
+      const password = _totpRequired ? _password : document.getElementById('password').value;
+      const totpCode = document.getElementById('totp-code').value.trim();
+
       try {
         const res = await fetch('/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: document.getElementById('email').value,
-            password: document.getElementById('password').value,
-          }),
+          body: JSON.stringify({ email, password, totp_code: totpCode }),
         });
-        if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.totp_required) {
+          // Show TOTP field
+          _totpRequired = true;
+          _email = email;
+          _password = password;
+          document.getElementById('totp-field').style.display = '';
+          document.getElementById('email').closest('.field').style.display = 'none';
+          document.getElementById('password').closest('.field').style.display = 'none';
+          document.getElementById('totp-code').focus();
+          btn.textContent = 'Verify Code';
+        } else if (res.ok) {
           window.location.href = '/';
         } else {
-          const data = await res.json().catch(() => ({}));
-          errEl.textContent = data.detail || 'Invalid email or password.';
+          errEl.textContent = data.detail || 'Invalid credentials.';
           errEl.classList.add('visible');
         }
       } catch (err) {
@@ -98,7 +119,11 @@
         errEl.classList.add('visible');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Sign In';
+        if (!_totpRequired || document.getElementById('totp-field').style.display === 'none') {
+          btn.textContent = 'Sign In';
+        } else {
+          btn.textContent = 'Verify Code';
+        }
       }
     });
   </script>

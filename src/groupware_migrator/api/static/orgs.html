@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groupware Migrator — Organizations</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="background-orb orb-a"></div>
+    <div class="background-orb orb-b"></div>
+    <div class="background-orb orb-c"></div>
+
+    <main class="app-shell">
+      <header class="hero">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:4px">
+          <h1 style="margin:0">Organizations</h1>
+          <a href="/" style="font-size:0.82rem;color:#8892a4;text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:20px;background:rgba(255,255,255,0.04)">← Dashboard</a>
+        </div>
+        <p>Group users into workspaces. Org owners can view member activity.</p>
+      </header>
+
+      <section class="layout">
+        <article class="panel form-panel">
+          <h2>My Organizations</h2>
+          <form id="create-org-form" style="margin-bottom:20px">
+            <label>Organization name
+              <input id="org-name" type="text" placeholder="Acme Corp" required />
+            </label>
+            <div class="actions" style="margin-top:10px">
+              <button id="create-org-btn" type="submit" class="btn primary">Create Organization</button>
+            </div>
+            <p id="org-feedback" class="feedback"></p>
+          </form>
+          <div id="orgs-list" class="jobs-list">
+            <p style="color:#8892a4;font-size:0.85rem;text-align:center;padding:24px 0">Loading…</p>
+          </div>
+        </article>
+
+        <aside class="panel dashboard-panel">
+          <div class="dashboard-section">
+            <h2 id="members-heading">Members</h2>
+            <p id="members-placeholder" style="color:#8892a4;font-size:0.85rem">Select an organization to view its members.</p>
+            <div id="members-list" class="jobs-list"></div>
+            <form id="add-member-form" style="display:none;margin-top:12px">
+              <div class="grid two-col">
+                <label>User ID
+                  <input id="member-user-id" type="text" placeholder="UUID of user" required />
+                </label>
+                <label>Role
+                  <select id="member-role">
+                    <option value="member">member</option>
+                    <option value="admin">admin</option>
+                    <option value="owner">owner</option>
+                  </select>
+                </label>
+              </div>
+              <div class="actions" style="margin-top:8px">
+                <button type="submit" class="btn secondary">Add Member</button>
+              </div>
+              <p id="member-feedback" class="feedback"></p>
+            </form>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module">
+import { requestJSON } from "/assets/js/api.js";
+
+let currentOrgId = null;
+
+async function loadOrgs() {
+  const list = document.getElementById("orgs-list");
+  try {
+    const data = await requestJSON("/api/orgs");
+    const orgs = data.items || [];
+    if (!orgs.length) {
+      list.innerHTML = `<p style="color:#8892a4;font-size:0.85rem;text-align:center;padding:24px 0">No organizations yet.</p>`;
+      return;
+    }
+    list.innerHTML = orgs.map(o => `
+      <div class="job-row" style="padding:12px 14px;margin-bottom:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);cursor:pointer" data-org-id="${o.id}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong>${esc(o.name)}</strong>
+            <span style="font-size:0.78rem;color:#8892a4;margin-left:8px">/${esc(o.slug)}</span>
+          </div>
+          <span style="font-size:0.78rem;color:#8892a4">${new Date(o.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+    `).join("");
+    list.addEventListener("click", async (e) => {
+      const row = e.target.closest("[data-org-id]");
+      if (row) selectOrg(row.dataset.orgId, orgs.find(o => o.id === row.dataset.orgId)?.name);
+    });
+  } catch (e) {
+    list.innerHTML = `<p style="color:#f87171;padding:16px">${e.message}</p>`;
+  }
+}
+
+async function selectOrg(orgId, name) {
+  currentOrgId = orgId;
+  document.getElementById("members-heading").textContent = `Members — ${name || orgId}`;
+  document.getElementById("members-placeholder").style.display = "none";
+  document.getElementById("add-member-form").style.display = "";
+  const list = document.getElementById("members-list");
+  try {
+    const data = await requestJSON(`/api/orgs/${orgId}/members`);
+    const members = data.items || [];
+    list.innerHTML = members.length
+      ? members.map(m => `
+          <div style="padding:10px 14px;margin-bottom:6px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <span style="font-family:monospace;font-size:0.8rem">${esc(m.email)}</span>
+              <span class="pill" style="margin-left:8px;background:rgba(148,163,184,0.1)">${esc(m.org_role)}</span>
+            </div>
+            <button class="btn ghost" style="color:#f87171;font-size:0.75rem" data-remove-member="${m.id}">Remove</button>
+          </div>
+        `).join("")
+      : `<p style="color:#8892a4;font-size:0.85rem;text-align:center;padding:16px 0">No members yet.</p>`;
+
+    list.querySelectorAll("[data-remove-member]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Remove this member?")) return;
+        await requestJSON(`/api/orgs/${orgId}/members/${btn.dataset.removeMember}`, { method: "DELETE" });
+        selectOrg(orgId, name);
+      });
+    });
+  } catch (e) {
+    list.innerHTML = `<p style="color:#f87171;padding:16px">${e.message}</p>`;
+  }
+}
+
+document.getElementById("create-org-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("org-name").value.trim();
+  const feedback = document.getElementById("org-feedback");
+  try {
+    await requestJSON("/api/orgs", { method: "POST", body: { name } });
+    feedback.style.color = "#34d399";
+    feedback.textContent = "Organization created.";
+    loadOrgs();
+  } catch (err) {
+    feedback.style.color = "#f87171";
+    feedback.textContent = err.message;
+  }
+});
+
+document.getElementById("add-member-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentOrgId) return;
+  const userId = document.getElementById("member-user-id").value.trim();
+  const role = document.getElementById("member-role").value;
+  const feedback = document.getElementById("member-feedback");
+  try {
+    await requestJSON(`/api/orgs/${currentOrgId}/members`, { method: "POST", body: { user_id: userId, role } });
+    feedback.style.color = "#34d399";
+    feedback.textContent = "Member added.";
+    selectOrg(currentOrgId);
+  } catch (err) {
+    feedback.style.color = "#f87171";
+    feedback.textContent = err.message;
+  }
+});
+
+function esc(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+loadOrgs();
+    </script>
+  </body>
+</html>

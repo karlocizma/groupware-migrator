@@ -13,6 +13,9 @@ COOKIE_NAME = "gm_session"
 JWT_ALGORITHM = "HS256"
 _bearer = HTTPBearer(auto_error=False)
 
+# Role hierarchy: viewer < operator < admin < super_admin
+_ROLE_RANK = {"viewer": 0, "operator": 1, "admin": 2, "super_admin": 3}
+
 
 def _jwt_secret(request: Request) -> str:
     return str(request.app.state.jwt_secret)
@@ -58,6 +61,29 @@ def require_user(current_user: dict | None = Depends(get_current_user)) -> dict:
 
 
 def require_admin(current_user: dict = Depends(require_user)) -> dict:
-    if not current_user.get("is_admin"):
+    role = current_user.get("role", "operator")
+    if _ROLE_RANK.get(role, 0) < _ROLE_RANK["admin"] and not current_user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin access required.")
     return current_user
+
+
+def require_super_admin(current_user: dict = Depends(require_user)) -> dict:
+    role = current_user.get("role", "operator")
+    if _ROLE_RANK.get(role, 0) < _ROLE_RANK["super_admin"]:
+        raise HTTPException(status_code=403, detail="Super-admin access required.")
+    return current_user
+
+
+def require_operator(current_user: dict = Depends(require_user)) -> dict:
+    """Require at least operator role (can start/cancel jobs)."""
+    role = current_user.get("role", "operator")
+    if _ROLE_RANK.get(role, 0) < _ROLE_RANK["operator"]:
+        raise HTTPException(status_code=403, detail="Operator or higher role required.")
+    return current_user
+
+
+def get_user_role(user: dict) -> str:
+    role = user.get("role", "")
+    if role in _ROLE_RANK:
+        return role
+    return "admin" if user.get("is_admin") else "operator"

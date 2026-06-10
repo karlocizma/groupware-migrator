@@ -216,6 +216,63 @@ class SQLiteStateStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_admin_audit_created
                     ON admin_audit_events(created_at);
+                CREATE TABLE IF NOT EXISTS scheduled_jobs (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL DEFAULT '',
+                    schedule_type TEXT NOT NULL DEFAULT 'cron',
+                    schedule_expr TEXT NOT NULL,
+                    request_json TEXT NOT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    next_run_at TEXT NOT NULL,
+                    last_run_at TEXT,
+                    last_run_job_id TEXT,
+                    last_run_status TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_scheduled_jobs_next_run
+                    ON scheduled_jobs(next_run_at, is_active);
+                CREATE TABLE IF NOT EXISTS webhooks (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    label TEXT NOT NULL DEFAULT '',
+                    url TEXT NOT NULL,
+                    secret TEXT NOT NULL,
+                    events_json TEXT NOT NULL DEFAULT '["job.completed","job.failed"]',
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    last_delivery_at TEXT,
+                    last_delivery_status INTEGER
+                );
+                CREATE INDEX IF NOT EXISTS idx_webhooks_user
+                    ON webhooks(user_id);
+                CREATE TABLE IF NOT EXISTS webhook_deliveries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    webhook_id TEXT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+                    event_type TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    response_status INTEGER,
+                    error TEXT,
+                    attempt INTEGER NOT NULL DEFAULT 1,
+                    delivered_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_hook
+                    ON webhook_deliveries(webhook_id, delivered_at);
+                CREATE TABLE IF NOT EXISTS organizations (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    slug TEXT UNIQUE NOT NULL,
+                    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS org_memberships (
+                    org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    role TEXT NOT NULL DEFAULT 'member',
+                    joined_at TEXT NOT NULL,
+                    PRIMARY KEY (org_id, user_id)
+                );
                 """
             )
         # Idempotent migrations
@@ -235,8 +292,39 @@ class SQLiteStateStore:
                 connection.execute("ALTER TABLE jobs ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0")
         except Exception:
             pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("ALTER TABLE jobs ADD COLUMN priority TEXT NOT NULL DEFAULT 'normal'")
+        except Exception:
+            pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'operator'")
+        except Exception:
+            pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT")
+        except Exception:
+            pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("ALTER TABLE users ADD COLUMN totp_recovery_json TEXT")
+        except Exception:
+            pass
 
-    def create_job(self, request: MigrationRequest, plan: MigrationPlan, user_id: str | None = None) -> str:
+    def create_job(
+        self,
+        request: MigrationRequest,
+        plan: MigrationPlan,
+        user_id: str | None = None,
+        priority: str = "normal",
+    ) -> str:
         job_id = str(uuid.uuid4())
         now = _utcnow_iso()
         request_json = json.dumps(request.to_dict(redact_password=True), sort_keys=True)
@@ -255,8 +343,9 @@ class SQLiteStateStore:
                     dry_run,
                     created_at,
                     updated_at,
-                    user_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    user_id,
+                    priority
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job_id,
@@ -270,6 +359,7 @@ class SQLiteStateStore:
                     now,
                     now,
                     user_id,
+                    priority,
                 ),
             )
         return job_id
@@ -451,16 +541,24 @@ class SQLiteStateStore:
             )
             return cursor.rowcount > 0
 
-    def create_user(self, *, email: str, password_hash: str, is_admin: bool = False) -> str:
+    def create_user(
+        self,
+        *,
+        email: str,
+        password_hash: str,
+        is_admin: bool = False,
+        role: str = "operator",
+    ) -> str:
         user_id = str(uuid.uuid4())
         now = _utcnow_iso()
+        effective_role = role if role else ("admin" if is_admin else "operator")
         with self._lock, self._connection() as connection:
             connection.execute(
                 """
-                INSERT INTO users (id, email, password_hash, is_admin, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO users (id, email, password_hash, is_admin, role, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (user_id, email.lower().strip(), password_hash, 1 if is_admin else 0, now),
+                (user_id, email.lower().strip(), password_hash, 1 if is_admin else 0, effective_role, now),
             )
         return user_id
 
@@ -553,7 +651,14 @@ class SQLiteStateStore:
             )
             return cursor.rowcount > 0
 
-    def update_user(self, user_id: str, *, is_admin: bool | None = None, is_active: bool | None = None) -> bool:
+    def update_user(
+        self,
+        user_id: str,
+        *,
+        is_admin: bool | None = None,
+        is_active: bool | None = None,
+        role: str | None = None,
+    ) -> bool:
         updates = []
         params: list[Any] = []
         if is_admin is not None:
@@ -562,6 +667,16 @@ class SQLiteStateStore:
         if is_active is not None:
             updates.append("is_active = ?")
             params.append(1 if is_active else 0)
+        if role is not None:
+            updates.append("role = ?")
+            params.append(role)
+            # Keep is_admin in sync with role for backward compat
+            if role in ("admin", "super_admin") and is_admin is None:
+                updates.append("is_admin = ?")
+                params.append(1)
+            elif role not in ("admin", "super_admin") and is_admin is None:
+                updates.append("is_admin = ?")
+                params.append(0)
         if not updates:
             return False
         params.append(user_id)
@@ -1139,3 +1254,410 @@ class SQLiteStateStore:
                 }
             )
         return items
+
+    # ─── Scheduled jobs ────────────────────────────────────────────────────────
+
+    def create_schedule(
+        self,
+        *,
+        name: str,
+        schedule_type: str,
+        schedule_expr: str,
+        request_json: str,
+        next_run_at: str,
+        user_id: str | None = None,
+    ) -> str:
+        schedule_id = str(uuid.uuid4())
+        now = _utcnow_iso()
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO scheduled_jobs
+                    (id, name, schedule_type, schedule_expr, request_json, next_run_at, user_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (schedule_id, name, schedule_type, schedule_expr, request_json, next_run_at, user_id, now, now),
+            )
+        return schedule_id
+
+    def get_schedule(self, schedule_id: str) -> dict[str, Any] | None:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT * FROM scheduled_jobs WHERE id = ?", (schedule_id,)
+            )
+            row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def list_schedules(self, *, user_id: str | None = None) -> list[dict[str, Any]]:
+        with self._lock, self._connection() as connection:
+            if user_id is not None:
+                cursor = connection.execute(
+                    "SELECT * FROM scheduled_jobs WHERE user_id = ? ORDER BY created_at DESC",
+                    (user_id,),
+                )
+            else:
+                cursor = connection.execute(
+                    "SELECT * FROM scheduled_jobs ORDER BY created_at DESC"
+                )
+            rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    def update_schedule(
+        self,
+        schedule_id: str,
+        *,
+        name: str | None = None,
+        schedule_expr: str | None = None,
+        is_active: bool | None = None,
+        next_run_at: str | None = None,
+    ) -> bool:
+        updates: list[str] = ["updated_at = ?"]
+        params: list[Any] = [_utcnow_iso()]
+        if name is not None:
+            updates.append("name = ?")
+            params.append(name)
+        if schedule_expr is not None:
+            updates.append("schedule_expr = ?")
+            params.append(schedule_expr)
+        if is_active is not None:
+            updates.append("is_active = ?")
+            params.append(1 if is_active else 0)
+        if next_run_at is not None:
+            updates.append("next_run_at = ?")
+            params.append(next_run_at)
+        params.append(schedule_id)
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                f"UPDATE scheduled_jobs SET {', '.join(updates)} WHERE id = ?",
+                tuple(params),
+            )
+            return cursor.rowcount > 0
+
+    def delete_schedule(self, schedule_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM scheduled_jobs WHERE id = ?", (schedule_id,)
+            )
+            return cursor.rowcount > 0
+
+    def list_due_schedules(self, *, before: str) -> list[dict[str, Any]]:
+        """Return active schedules whose next_run_at is at or before `before`."""
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT * FROM scheduled_jobs WHERE is_active = 1 AND next_run_at <= ? ORDER BY next_run_at ASC",
+                (before,),
+            )
+            rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    def update_schedule_after_fire(
+        self,
+        *,
+        schedule_id: str,
+        job_id: str,
+        next_run_at: str,
+    ) -> None:
+        now = _utcnow_iso()
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE scheduled_jobs
+                SET last_run_at = ?, last_run_job_id = ?, next_run_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (now, job_id, next_run_at, now, schedule_id),
+            )
+
+    # ─── Webhooks ──────────────────────────────────────────────────────────────
+
+    def create_webhook(
+        self,
+        *,
+        user_id: str | None,
+        label: str,
+        url: str,
+        secret: str,
+        events: list[str] | None = None,
+    ) -> str:
+        webhook_id = str(uuid.uuid4())
+        events_json = json.dumps(events or ["job.completed", "job.failed"], sort_keys=True)
+        now = _utcnow_iso()
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO webhooks (id, user_id, label, url, secret, events_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (webhook_id, user_id, label, url, secret, events_json, now),
+            )
+        return webhook_id
+
+    def get_webhook(self, webhook_id: str) -> dict[str, Any] | None:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT * FROM webhooks WHERE id = ?", (webhook_id,)
+            )
+            row = cursor.fetchone()
+        if not row:
+            return None
+        item = dict(row)
+        try:
+            item["events"] = json.loads(item.pop("events_json"))
+        except Exception:
+            item["events"] = []
+        return item
+
+    def list_webhooks(self, *, user_id: str | None = None) -> list[dict[str, Any]]:
+        with self._lock, self._connection() as connection:
+            if user_id is not None:
+                cursor = connection.execute(
+                    "SELECT * FROM webhooks WHERE user_id = ? ORDER BY created_at DESC",
+                    (user_id,),
+                )
+            else:
+                cursor = connection.execute(
+                    "SELECT * FROM webhooks ORDER BY created_at DESC"
+                )
+            rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["events"] = json.loads(item.pop("events_json"))
+            except Exception:
+                item["events"] = []
+            result.append(item)
+        return result
+
+    def delete_webhook(self, webhook_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM webhooks WHERE id = ?", (webhook_id,)
+            )
+            return cursor.rowcount > 0
+
+    def list_webhooks_for_event(
+        self,
+        *,
+        event_type: str,
+        user_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return active webhooks subscribed to the given event type."""
+        with self._lock, self._connection() as connection:
+            if user_id is not None:
+                cursor = connection.execute(
+                    "SELECT * FROM webhooks WHERE is_active = 1 AND user_id = ?",
+                    (user_id,),
+                )
+            else:
+                cursor = connection.execute(
+                    "SELECT * FROM webhooks WHERE is_active = 1"
+                )
+            rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            try:
+                events = json.loads(item.pop("events_json", "[]"))
+            except Exception:
+                events = []
+            if event_type in events:
+                item["events"] = events
+                result.append(item)
+        return result
+
+    def append_webhook_delivery(
+        self,
+        *,
+        webhook_id: str,
+        event_type: str,
+        payload_json: str,
+        response_status: int | None,
+        error: str | None,
+        attempt: int,
+    ) -> None:
+        now = _utcnow_iso()
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO webhook_deliveries
+                    (webhook_id, event_type, payload_json, response_status, error, attempt, delivered_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (webhook_id, event_type, payload_json, response_status, error, attempt, now),
+            )
+            connection.execute(
+                "UPDATE webhooks SET last_delivery_at = ?, last_delivery_status = ? WHERE id = ?",
+                (now, response_status, webhook_id),
+            )
+
+    def list_webhook_deliveries(
+        self,
+        webhook_id: str,
+        *,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        safe_limit = max(min(int(limit), 200), 1)
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                """
+                SELECT id, webhook_id, event_type, response_status, error, attempt, delivered_at
+                FROM webhook_deliveries WHERE webhook_id = ?
+                ORDER BY id DESC LIMIT ?
+                """,
+                (webhook_id, safe_limit),
+            )
+            rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    # ─── TOTP 2FA ──────────────────────────────────────────────────────────────
+
+    def set_totp_secret(self, user_id: str, *, secret: str, recovery_codes: list[str]) -> None:
+        """Store (unverified) TOTP secret and hashed recovery codes."""
+        recovery_json = json.dumps(
+            [hashlib.sha256(c.encode()).hexdigest() for c in recovery_codes],
+            sort_keys=True,
+        )
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                "UPDATE users SET totp_secret = ?, totp_recovery_json = ?, totp_enabled = 0 WHERE id = ?",
+                (secret, recovery_json, user_id),
+            )
+
+    def enable_totp(self, user_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "UPDATE users SET totp_enabled = 1 WHERE id = ? AND totp_secret IS NOT NULL",
+                (user_id,),
+            )
+            return cursor.rowcount > 0
+
+    def disable_totp(self, user_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_recovery_json = NULL WHERE id = ?",
+                (user_id,),
+            )
+            return cursor.rowcount > 0
+
+    def consume_totp_recovery_code(self, user_id: str, code: str) -> bool:
+        """Use a recovery code (removes it). Returns True if valid."""
+        user = self.get_user_by_id(user_id)
+        if not user or not user.get("totp_recovery_json"):
+            return False
+        try:
+            hashed_codes: list[str] = json.loads(user["totp_recovery_json"])
+        except Exception:
+            return False
+        code_hash = hashlib.sha256(code.encode()).hexdigest()
+        if code_hash not in hashed_codes:
+            return False
+        hashed_codes.remove(code_hash)
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                "UPDATE users SET totp_recovery_json = ? WHERE id = ?",
+                (json.dumps(hashed_codes), user_id),
+            )
+        return True
+
+    # ─── Organizations ─────────────────────────────────────────────────────────
+
+    def create_org(self, *, name: str, slug: str, created_by: str) -> str:
+        org_id = str(uuid.uuid4())
+        now = _utcnow_iso()
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                "INSERT INTO organizations (id, name, slug, created_by, created_at) VALUES (?, ?, ?, ?, ?)",
+                (org_id, name, slug.lower().strip(), created_by, now),
+            )
+            connection.execute(
+                "INSERT INTO org_memberships (org_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)",
+                (org_id, created_by, now),
+            )
+        return org_id
+
+    def get_org(self, org_id: str) -> dict[str, Any] | None:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT * FROM organizations WHERE id = ?", (org_id,)
+            )
+            row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def get_org_by_slug(self, slug: str) -> dict[str, Any] | None:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT * FROM organizations WHERE slug = ?", (slug.lower().strip(),)
+            )
+            row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def list_orgs(self, *, user_id: str | None = None) -> list[dict[str, Any]]:
+        """List orgs; admin (user_id=None) sees all."""
+        with self._lock, self._connection() as connection:
+            if user_id is not None:
+                cursor = connection.execute(
+                    """
+                    SELECT o.* FROM organizations o
+                    JOIN org_memberships m ON m.org_id = o.id
+                    WHERE m.user_id = ?
+                    ORDER BY o.created_at DESC
+                    """,
+                    (user_id,),
+                )
+            else:
+                cursor = connection.execute(
+                    "SELECT * FROM organizations ORDER BY created_at DESC"
+                )
+            rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    def list_org_members(self, org_id: str) -> list[dict[str, Any]]:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                """
+                SELECT u.id, u.email, u.role AS user_role, m.role AS org_role, m.joined_at
+                FROM org_memberships m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.org_id = ?
+                ORDER BY m.joined_at ASC
+                """,
+                (org_id,),
+            )
+            rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    def get_org_member_role(self, org_id: str, user_id: str) -> str | None:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT role FROM org_memberships WHERE org_id = ? AND user_id = ?",
+                (org_id, user_id),
+            )
+            row = cursor.fetchone()
+        return str(row["role"]) if row else None
+
+    def add_org_member(self, org_id: str, user_id: str, role: str = "member") -> bool:
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute(
+                    "INSERT OR IGNORE INTO org_memberships (org_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)",
+                    (org_id, user_id, role, _utcnow_iso()),
+                )
+            return True
+        except Exception:
+            return False
+
+    def remove_org_member(self, org_id: str, user_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM org_memberships WHERE org_id = ? AND user_id = ?",
+                (org_id, user_id),
+            )
+            return cursor.rowcount > 0
+
+    def delete_org(self, org_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM organizations WHERE id = ?", (org_id,)
+            )
+            return cursor.rowcount > 0

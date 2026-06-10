@@ -14,6 +14,12 @@ Local-first tool for migrating email, calendar, and contacts between servers. Ru
 - **Provider presets:** Gmail, Microsoft 365, Yahoo, Zoho — auto-fill host/port/TLS/auth defaults
 - **Multi-user:** JWT session authentication, per-user job scoping, API key support
 - **Reports:** per-job structured audit events, JSON/CSV export
+- **Scheduling:** cron-style and interval-based recurring jobs (e.g. `0 2 * * *`, `6h`)
+- **Webhooks:** HMAC-SHA256-signed POST notifications on job completion/failure
+- **2FA:** TOTP two-factor authentication with recovery codes (Google Authenticator / Authy)
+- **RBAC:** four roles — `viewer`, `operator`, `admin`, `super_admin`
+- **Organizations:** group users into workspaces with owner/admin/member roles
+- **Credential vault:** optional AES encryption for scheduled job credentials (`VAULT_KEY`)
 
 ## Quick start
 
@@ -42,6 +48,7 @@ ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=changeme ./start.sh
 | `LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `PORT` | `8000` | Port for the web server (used by `start.sh`) |
 | `SHUTDOWN_DRAIN_TIMEOUT` | `30` | Seconds to wait for running jobs to finish before forced shutdown |
+| `VAULT_KEY` | — | 32-byte URL-safe base64 key for encrypting scheduled job credentials at rest. Generate: `python3 -c "import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b'=').decode())"` |
 
 ## CLI usage
 
@@ -85,14 +92,19 @@ All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bea
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/auth/login` | Log in; sets `gm_session` cookie |
+| `POST` | `/auth/login` | Log in; sets `gm_session` cookie. Pass `totp_code` if 2FA is enabled. |
 | `POST` | `/auth/logout` | Clear session cookie |
-| `GET` | `/auth/me` | Current user info |
-| `POST` | `/auth/users` | Create a user (admin only) |
+| `GET` | `/auth/me` | Current user info (includes `role`) |
+| `POST` | `/auth/users` | Create a user (admin only); supports `role` field |
 | `GET` | `/auth/users` | List users (admin only) |
 | `POST` | `/auth/keys` | Create an API key |
 | `GET` | `/auth/keys` | List your API keys |
 | `DELETE` | `/auth/keys/{key_id}` | Revoke an API key |
+| `POST` | `/auth/change-password` | Change your password |
+| `GET` | `/auth/totp/setup` | Generate TOTP secret + recovery codes |
+| `POST` | `/auth/totp/confirm` | Confirm setup with a live TOTP code |
+| `POST` | `/auth/totp/disable` | Disable 2FA (requires current password) |
+| `GET` | `/auth/totp/status` | Check whether 2FA is enabled |
 
 ### Jobs
 
@@ -127,6 +139,40 @@ All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bea
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/providers` | List provider presets with defaults and auth guidance |
+
+### Schedules
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/schedules` | Create a recurring schedule (cron or interval) |
+| `GET` | `/api/schedules` | List your schedules |
+| `GET` | `/api/schedules/{id}` | Get a schedule |
+| `PATCH` | `/api/schedules/{id}` | Update name, expression, or active state |
+| `DELETE` | `/api/schedules/{id}` | Delete a schedule |
+
+### Webhooks
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/webhooks` | Register a webhook endpoint |
+| `GET` | `/api/webhooks` | List your webhooks |
+| `GET` | `/api/webhooks/{id}` | Get a webhook |
+| `DELETE` | `/api/webhooks/{id}` | Remove a webhook |
+| `GET` | `/api/webhooks/{id}/deliveries` | View delivery history |
+
+### Organizations
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/orgs` | Create an organization |
+| `GET` | `/api/orgs` | List your organizations |
+| `GET` | `/api/orgs/{id}` | Get an organization |
+| `GET` | `/api/orgs/{id}/members` | List members |
+| `POST` | `/api/orgs/{id}/members` | Add a member |
+| `DELETE` | `/api/orgs/{id}/members/{user_id}` | Remove a member |
+| `DELETE` | `/api/orgs/{id}` | Delete an org (admin only) |
+
+All `/api/*` endpoints are also accessible at `/api/v1/*` (versioned prefix).
 
 ## CSV batch format
 

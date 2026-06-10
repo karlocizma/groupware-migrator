@@ -4,10 +4,14 @@ from concurrent.futures import Future, ThreadPoolExecutor
 import logging
 import threading
 import time
+from typing import TYPE_CHECKING
 
 from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.state import SQLiteStateStore
 from groupware_migrator.models import JobStatus, MigrationPlan, MigrationRequest
+
+if TYPE_CHECKING:
+    from groupware_migrator.engine.webhooks import WebhookDeliveryManager
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +27,11 @@ class BackgroundJobManager:
         state_store: SQLiteStateStore,
         runner: MigrationRunner,
         max_workers: int = 4,
+        webhook_manager: "WebhookDeliveryManager | None" = None,
     ):
         self._state_store = state_store
         self._runner = runner
+        self._webhook_manager = webhook_manager
         self._executor = ThreadPoolExecutor(
             max_workers=max(max_workers, 1),
             thread_name_prefix="migration-worker",
@@ -66,11 +72,32 @@ class BackgroundJobManager:
             return
 
         request, retry_attempt = context
+
+        # Fire webhook notifications for job completion/failure
+        job_row = self._state_store.get_job(job_id)
+        if job_row and self._webhook_manager is not None:
+            status = job_row.get("status", "")
+            event_type = "job.completed" if status == JobStatus.COMPLETED.value else "job.failed"
+            user_id = job_row.get("user_id") or None
+            payload = {
+                "job_id": job_id,
+                "job_name": job_row.get("job_name"),
+                "status": status,
+                "migrated_count": job_row.get("migrated_count", 0),
+                "skipped_count": job_row.get("skipped_count", 0),
+                "failed_count": job_row.get("failed_count", 0),
+                "last_error": job_row.get("last_error"),
+                "finished_at": job_row.get("finished_at"),
+            }
+            try:
+                self._webhook_manager.fire(event_type=event_type, payload=payload, user_id=user_id)
+            except Exception as exc:
+                logger.error("Failed to fire webhooks for job %s: %s", job_id, exc)
+
         max_retries = getattr(request.options, "max_retries", 0)
         if retry_attempt >= max_retries:
             return
 
-        job_row = self._state_store.get_job(job_id)
         if not job_row or job_row.get("status") != JobStatus.FAILED.value:
             return
 
@@ -92,8 +119,15 @@ class BackgroundJobManager:
         except Exception as exc:
             logger.error("Failed to schedule retry for job %s: %s", job_id, exc)
 
-    def start_job(self, request: MigrationRequest, user_id: str | None = None) -> str:
-        job_id = self._state_store.create_job(request=request, plan=MigrationPlan(), user_id=user_id)
+    def start_job(
+        self,
+        request: MigrationRequest,
+        user_id: str | None = None,
+        priority: str = "normal",
+    ) -> str:
+        job_id = self._state_store.create_job(
+            request=request, plan=MigrationPlan(), user_id=user_id, priority=priority
+        )
         self._submit(job_id=job_id, request=request)
         return job_id
 

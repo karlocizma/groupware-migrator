@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groupware Migrator — Schedules &amp; Webhooks</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="background-orb orb-a"></div>
+    <div class="background-orb orb-b"></div>
+    <div class="background-orb orb-c"></div>
+
+    <main class="app-shell">
+      <header class="hero">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:4px">
+          <h1 style="margin:0">Schedules &amp; Webhooks</h1>
+          <a href="/" style="font-size:0.82rem;color:#8892a4;text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:20px;background:rgba(255,255,255,0.04)" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#8892a4'">← Dashboard</a>
+          <a id="admin-link" href="/admin" style="display:none;font-size:0.82rem;color:#8892a4;text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:20px;background:rgba(255,255,255,0.04)" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#8892a4'">Admin</a>
+        </div>
+        <p>Create recurring migration jobs and configure webhook notifications.</p>
+      </header>
+
+      <section class="layout">
+        <!-- Schedules Panel -->
+        <article class="panel form-panel">
+          <h2>Schedules</h2>
+          <p class="helper-text">Cron expression examples: <code>0 2 * * *</code> (daily at 2am), <code>0 */6 * * *</code> (every 6h), <code>0 0 * * 0</code> (weekly Sunday).<br>Interval examples: <code>6h</code>, <code>1d</code>, <code>30m</code>.</p>
+
+          <form id="schedule-form" style="margin-bottom:16px">
+            <div class="grid two-col">
+              <label>Schedule name
+                <input id="sched-name" type="text" placeholder="nightly-mail-sync" />
+              </label>
+              <label>Type
+                <select id="sched-type">
+                  <option value="cron">Cron expression</option>
+                  <option value="interval">Interval</option>
+                </select>
+              </label>
+              <label>Expression
+                <input id="sched-expr" type="text" placeholder="0 2 * * *" required />
+              </label>
+            </div>
+            <p class="helper-text" style="margin-top:4px">The schedule will reuse the last-used migration form settings. To change the target migration, start a new job from the dashboard and then create a schedule referencing those same settings.</p>
+            <p id="sched-feedback" class="feedback"></p>
+            <div class="actions">
+              <button id="sched-create-btn" type="submit" class="btn primary" disabled title="Fill in the migration form on the dashboard and save it first">Create Schedule (copy from dashboard form)</button>
+            </div>
+          </form>
+
+          <div id="schedules-list" class="jobs-list" style="max-height:400px;overflow-y:auto">
+            <p style="color:#8892a4;font-size:0.85rem;text-align:center;padding:24px 0">Loading schedules…</p>
+          </div>
+        </article>
+
+        <!-- Webhooks Panel -->
+        <aside class="panel dashboard-panel">
+          <div class="dashboard-section">
+            <h2>Webhooks</h2>
+            <p class="helper-text">Receive a signed HTTP POST when a job completes or fails. Sign with HMAC-SHA256 header <code>X-Groupware-Signature</code>.</p>
+
+            <form id="webhook-form" style="margin-bottom:16px">
+              <div class="grid two-col">
+                <label>Label
+                  <input id="wh-label" type="text" placeholder="Slack notify" />
+                </label>
+                <label>URL
+                  <input id="wh-url" type="url" placeholder="https://hooks.example.com/..." required />
+                </label>
+              </div>
+              <label>Events
+                <div style="display:flex;gap:12px;margin-top:6px">
+                  <label class="check"><input type="checkbox" name="wh-event" value="job.completed" checked /> job.completed</label>
+                  <label class="check"><input type="checkbox" name="wh-event" value="job.failed" checked /> job.failed</label>
+                  <label class="check"><input type="checkbox" name="wh-event" value="job.cancelled" /> job.cancelled</label>
+                </div>
+              </label>
+              <p id="wh-feedback" class="feedback"></p>
+              <p id="wh-secret-display" class="feedback" style="word-break:break-all"></p>
+              <div class="actions">
+                <button id="wh-create-btn" type="submit" class="btn primary">Add Webhook</button>
+              </div>
+            </form>
+
+            <div id="webhooks-list" class="jobs-list" style="max-height:500px;overflow-y:auto">
+              <p style="color:#8892a4;font-size:0.85rem;text-align:center;padding:24px 0">Loading webhooks…</p>
+            </div>
+          </div>
+
+          <!-- 2FA / Security section -->
+          <div class="dashboard-section">
+            <h2>Two-Factor Authentication</h2>
+            <div id="totp-status-area">
+              <p style="color:#8892a4;font-size:0.85rem">Loading 2FA status…</p>
+            </div>
+            <div id="totp-setup-area" style="display:none">
+              <p class="helper-text">Scan this secret key with your authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm.</p>
+              <div class="grid two-col">
+                <label>Secret key (base32)
+                  <input id="totp-secret-display" type="text" readonly style="font-family:monospace;font-size:0.8rem" />
+                </label>
+                <label>Authenticator URI
+                  <input id="totp-uri-display" type="text" readonly style="font-family:monospace;font-size:0.7rem" />
+                </label>
+              </div>
+              <details style="margin:8px 0">
+                <summary style="cursor:pointer;color:#8892a4;font-size:0.85rem">Recovery codes (save these!)</summary>
+                <pre id="totp-recovery-display" style="background:rgba(0,0,0,0.3);padding:12px;border-radius:6px;font-size:0.8rem;white-space:pre-wrap"></pre>
+              </details>
+              <div class="grid two-col">
+                <label>Confirm 6-digit code
+                  <input id="totp-confirm-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456" />
+                </label>
+              </div>
+              <div class="actions">
+                <button id="totp-confirm-btn" class="btn primary">Enable 2FA</button>
+                <button id="totp-cancel-btn" class="btn secondary">Cancel</button>
+              </div>
+              <p id="totp-feedback" class="feedback"></p>
+            </div>
+            <div id="totp-disable-area" style="display:none">
+              <label>Current password (to disable 2FA)
+                <input id="totp-disable-password" type="password" />
+              </label>
+              <div class="actions">
+                <button id="totp-disable-btn" class="btn secondary">Disable 2FA</button>
+              </div>
+              <p id="totp-disable-feedback" class="feedback"></p>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="/assets/js/scheduler.js"></script>
+  </body>
+</html>
