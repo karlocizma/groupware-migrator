@@ -110,18 +110,18 @@
 
   <div class="container">
     <header>
-      <h1>Groupware Migrator — Future Roadmap</h1>
-      <p>What comes after the foundation. This roadmap covers production hardening, scheduling, observability, and enterprise features for the project's next evolution.</p>
+      <h1>Groupware Migrator — Roadmap</h1>
+      <p>All seven phases are now implemented. This document captures what was built and what intentional gaps remain for future integration work.</p>
       <div class="meta">
         <div class="badge">As of <strong>June 2026</strong></div>
-        <div class="badge">Foundation <strong>complete</strong> (Phases 1–3)</div>
-        <div class="badge">4 phases ahead</div>
+        <div class="badge" style="background:rgba(52,211,153,0.15);color:#34d399;border-color:rgba(52,211,153,0.3)">All 7 phases <strong>complete</strong></div>
+        <div class="badge">159 tests · all green</div>
       </div>
     </header>
 
     <!-- Foundation summary -->
     <div class="foundation">
-      <h2>Foundation — Phases 1–3 Complete</h2>
+      <h2>All Phases Complete — What's Shipped</h2>
       <div class="foundation-grid">
         <div class="foundation-item">IMAP/POP3/CalDAV/CardDAV connectors</div>
         <div class="foundation-item">Background jobs + crash recovery</div>
@@ -129,15 +129,22 @@
         <div class="foundation-item">Incremental sync with cursor persistence</div>
         <div class="foundation-item">Preflight checks (single + batch)</div>
         <div class="foundation-item">SSE live progress streams</div>
-        <div class="foundation-item">JWT + HttpOnly cookie auth</div>
-        <div class="foundation-item">Per-user job scoping</div>
-        <div class="foundation-item">API key support</div>
-        <div class="foundation-item">Admin bootstrap from env vars</div>
-        <div class="foundation-item">ES module frontend</div>
-        <div class="foundation-item">localStorage form persistence</div>
-        <div class="foundation-item">Loading states + mobile layout</div>
-        <div class="foundation-item">Structured audit events + reports</div>
-        <div class="foundation-item">75 unit tests, all green</div>
+        <div class="foundation-item">JWT + HttpOnly cookie auth + API keys</div>
+        <div class="foundation-item">Per-user job scoping · RBAC (viewer/operator/admin/super_admin)</div>
+        <div class="foundation-item">Rate limiting · Security headers · Health probes</div>
+        <div class="foundation-item">Job cancellation · Retry policy · Graceful drain</div>
+        <div class="foundation-item">SQLite backup/restore CLI</div>
+        <div class="foundation-item">Docker + docker-compose + nginx guide</div>
+        <div class="foundation-item">Admin dashboard (stats, user management, audit log, cleanup)</div>
+        <div class="foundation-item">Cron/interval recurring schedules · SchedulerThread</div>
+        <div class="foundation-item">HMAC-signed webhook notifications (job.completed/failed/cancelled)</div>
+        <div class="foundation-item">Job priority field (high/normal/low)</div>
+        <div class="foundation-item">TOTP two-factor auth + recovery codes</div>
+        <div class="foundation-item">Organizations + member roles (owner/admin/member)</div>
+        <div class="foundation-item">Credential vault (Fernet / VAULT_KEY)</div>
+        <div class="foundation-item">REST API versioning (/api/v1/*)</div>
+        <div class="foundation-item">Structured audit events + JSON/CSV reports</div>
+        <div class="foundation-item">159 unit tests · all green</div>
       </div>
     </div>
 
@@ -531,9 +538,21 @@
       </div>
     </div>
 
+    <!-- Remaining gaps -->
+    <div class="defer-section" style="border-color:rgba(251,191,36,0.25);background:rgba(251,191,36,0.04)">
+      <h2 style="color:#fbbf24">Remaining Gaps — Not Yet Implemented</h2>
+      <p style="font-size:0.88rem;color:#8892a4;margin-bottom:14px">These items were planned in the roadmap but require external services or a separate integration phase. They are intentionally deferred, not forgotten.</p>
+      <div class="defer-list">
+        <div class="defer-item"><strong>SAML 2.0 / OIDC SSO</strong> — Requires selecting and configuring a specific IdP (Okta, Auth0, Keycloak, etc.). Infrastructure groundwork exists; IdP integration is the missing piece.</div>
+        <div class="defer-item"><strong>LDAP / Active Directory bind</strong> — Needs a live LDAP server and org-specific schema decisions (attribute mapping, group sync).</div>
+        <div class="defer-item"><strong>Email notifications (SMTP)</strong> — Requires an SMTP server. Webhook notifications cover the same use case; email can be added once SMTP config is wired in.</div>
+        <div class="defer-item"><strong>Plugin / connector SDK</strong> — A documented extension point for third-party connectors. The connector base classes are ready; what's missing is documentation and a packaging story.</div>
+      </div>
+    </div>
+
     <!-- Intentionally out of scope -->
     <div class="defer-section">
-      <h2>Intentionally Out of Scope (for now)</h2>
+      <h2>Intentionally Out of Scope</h2>
       <div class="defer-list">
         <div class="defer-item">PostgreSQL / MySQL backend</div>
         <div class="defer-item">Tasks &amp; Notes workloads</div>

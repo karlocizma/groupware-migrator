@@ -191,20 +191,30 @@ See `examples/batch-users.example.csv` for a sample file.
 ```
 groupware_migrator/
 ├── api/
-│   ├── app.py              # FastAPI factory, lifespan, route mounting
-│   ├── auth.py             # JWT creation/validation, FastAPI Depends
+│   ├── app.py              # FastAPI factory, lifespan, route mounting, scheduler start
+│   ├── auth.py             # JWT, Depends: require_user/admin/operator/super_admin
+│   ├── rate_limit.py       # In-memory sliding-window login rate limiter
 │   ├── schemas.py          # Pydantic request models
 │   ├── routers/
-│   │   ├── auth_router.py  # /auth/* endpoints
+│   │   ├── auth_router.py  # /auth/* (login, TOTP, API keys, user management)
+│   │   ├── admin_router.py # /admin/* (stats, users, audit log, cleanup)
 │   │   ├── jobs.py         # /jobs/* endpoints
 │   │   ├── batches.py      # /batches/* endpoints
+│   │   ├── scheduler_router.py  # /schedules/* CRUD
+│   │   ├── webhooks_router.py   # /webhooks/* CRUD + delivery log
+│   │   ├── orgs_router.py       # /orgs/* CRUD + member management
 │   │   └── providers.py    # /providers endpoint
 │   └── static/
-│       ├── index.html
-│       ├── login.html
+│       ├── index.html      # Main dashboard
+│       ├── login.html      # Login page (TOTP step-up aware)
+│       ├── admin.html      # Admin dashboard
+│       ├── scheduler.html  # Schedules, webhooks, 2FA settings
+│       ├── orgs.html       # Organization management
 │       ├── styles.css
 │       └── js/
-│           ├── main.js     # App entry point (ES module)
+│           ├── main.js     # Dashboard entry point (ES module)
+│           ├── admin.js    # Admin panel logic
+│           ├── scheduler.js # Schedules/webhooks/TOTP logic
 │           ├── api.js      # Fetch wrapper with 401 redirect
 │           └── form.js     # localStorage form persistence
 ├── connectors/
@@ -215,8 +225,12 @@ groupware_migrator/
 │   └── factory.py          # Protocol → connector dispatch
 ├── engine/
 │   ├── state.py            # SQLiteStateStore; all persistence
-│   ├── background.py       # BackgroundJobManager (ThreadPoolExecutor)
+│   ├── background.py       # BackgroundJobManager (ThreadPoolExecutor + webhooks)
 │   ├── runner.py           # MigrationRunner; item iteration → upsert
+│   ├── scheduler.py        # SchedulerThread; fires due cron/interval schedules
+│   ├── cron.py             # Minimal 5-field cron expression parser
+│   ├── webhooks.py         # WebhookDeliveryManager; HMAC-signed HTTP POST
+│   ├── vault.py            # Fernet credential encryption (VAULT_KEY)
 │   ├── planner.py          # MigrationPlan construction
 │   ├── preflight.py        # Connectivity + plan validation
 │   ├── idempotency.py      # Fingerprint-based duplicate detection
@@ -225,7 +239,7 @@ groupware_migrator/
 ├── models/
 │   └── domain.py           # MigrationRequest, MigrationPlan, enums
 ├── providers.py            # Provider preset catalog
-└── cli.py                  # CLI entrypoint
+└── cli.py                  # CLI entrypoint (+ backup/restore subcommands)
 ```
 
 ### State store (SQLite)
@@ -234,27 +248,34 @@ All persistence goes through `SQLiteStateStore`. Key tables:
 
 | Table | Purpose |
 |---|---|
-| `users` | User accounts with bcrypt password hashes |
-| `api_keys` | Hashed API keys per user |
-| `jobs` | Migration jobs with status, counters, `user_id` |
+| `users` | Accounts with bcrypt hashes, `role`, `is_active`, TOTP columns |
+| `api_keys` | SHA-256-hashed API keys per user |
+| `jobs` | Migration jobs with status, counters, `user_id`, `priority`, `retry_count` |
 | `batches` | Batch waves with summary counters, `user_id` |
 | `batch_items` | Per-row job references within a batch |
 | `checkpoints` | Per-job mailbox resume positions |
-| `sync_cursors` | Persisted incremental sync positions (keyed by identity hash) |
+| `sync_cursors` | Incremental sync positions (keyed by identity hash) |
 | `message_migrations` | Fingerprint ledger for idempotency |
 | `audit_events` | Structured per-job event log |
+| `admin_audit_events` | Admin action log (user changes, cleanup, etc.) |
+| `scheduled_jobs` | Recurring migration schedules with cron/interval expressions |
+| `webhooks` | Registered webhook endpoints with HMAC secrets |
+| `webhook_deliveries` | Delivery attempt log per webhook |
+| `organizations` | Multi-tenant workspaces |
+| `org_memberships` | User–org membership with owner/admin/member roles |
 
 ### Auth flow
 
-1. On first startup, if no users exist and `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set, an admin account is created.
-2. `POST /auth/login` validates password (bcrypt), issues a JWT in a `gm_session` HttpOnly cookie (8-hour TTL by default).
-3. All `/api/*` routes require the cookie or a `Authorization: Bearer <api-key>` header.
-4. Non-admin users see only their own jobs and batches; admins see all.
+1. On first startup with no users, `ADMIN_EMAIL`/`ADMIN_PASSWORD` bootstrap the first admin account.
+2. `POST /auth/login` validates password (bcrypt), checks if account is active, handles TOTP if enabled, and issues a JWT in a `gm_session` HttpOnly cookie (8-hour TTL by default). Returns `{"totp_required": true}` if 2FA is enabled and `totp_code` is not provided.
+3. All `/api/*` routes require the cookie or an `Authorization: Bearer <api-key>` header.
+4. Role-based access: `viewer` (read-only), `operator` (start/cancel jobs), `admin` (user management), `super_admin` (org management, all admin actions).
 5. API keys are SHA-256 hashed in the database; the raw key is returned once on creation.
 
 ## Notes
 
 - POP3 is source-only (destination POP3 is out of scope).
 - `tasks` and `notes` workloads are modeled but not executed.
-- Credentials are not persisted in plaintext — job snapshots are stored redacted.
+- Job snapshots store credentials redacted; scheduled jobs store the full request (Fernet-encrypted if `VAULT_KEY` is set).
 - The `data/state.db` file is created automatically on first startup.
+- SAML/OIDC SSO and LDAP bind are not implemented — these require an external IdP and are left for a future integration phase.
