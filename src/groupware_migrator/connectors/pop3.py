@@ -2,6 +2,7 @@ from __future__ import annotations
 import base64
 
 from contextlib import contextmanager
+import logging
 import poplib
 import ssl
 from typing import Iterable
@@ -20,6 +21,9 @@ from groupware_migrator.models import (
     SourceProtocol,
     TlsProfile,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _build_ssl_context(config: ConnectionConfig) -> ssl.SSLContext:
@@ -97,6 +101,7 @@ class Pop3SourceConnector(SourceConnector):
     def validate(self) -> None:
         with self._connect() as client:
             client.stat()
+        logger.debug("POP3 source connection validated: %s@%s", self.config.username, self.config.host)
 
     def list_mailboxes(self) -> list[MailboxSnapshot]:
         with self._connect() as client:

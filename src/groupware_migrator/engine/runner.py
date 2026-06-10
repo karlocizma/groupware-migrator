@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from groupware_migrator.connectors.base import DestinationConnector, SourceConnector
@@ -20,6 +21,8 @@ from groupware_migrator.models import (
     SyncMode,
     WorkloadType,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -48,8 +51,9 @@ class MigrationRunner:
                 event_level=event_level,
                 payload=payload or {},
             )
-        except Exception:
+        except Exception as exc:
             # Auditing should not break migration execution.
+            logger.warning("Failed to write audit event %s for job %s: %s", event_type, job_id, exc)
             return
 
     def _resolve_incremental_cursors(self, request: MigrationRequest) -> dict[str, str]:
@@ -104,6 +108,7 @@ class MigrationRunner:
             job_id = self._state_store.create_job(request, plan)
             mark_started = True
         self._state_store.update_job_plan(job_id, plan)
+        logger.info("Job %s starting (workload=%s, dry_run=%s)", job_id, request.workload.value, request.options.dry_run)
 
         self._state_store.set_job_status(
             job_id,
@@ -310,6 +315,13 @@ class MigrationRunner:
                 )
             job_row = self._state_store.get_job(job_id)
             if job_row:
+                logger.info(
+                    "Job %s completed (migrated=%d, skipped=%d, failed=%d)",
+                    job_id,
+                    int(job_row.get("migrated_count", 0)),
+                    int(job_row.get("skipped_count", 0)),
+                    int(job_row.get("failed_count", 0)),
+                )
                 self._audit(
                     job_id,
                     "job_completed",
@@ -322,6 +334,7 @@ class MigrationRunner:
         except Exception as exc:
             if not error_messages:
                 error_messages.append(str(exc))
+            logger.error("Job %s failed: %s", job_id, error_messages[-1] if error_messages else str(exc))
             self._state_store.set_job_status(
                 job_id,
                 JobStatus.FAILED,

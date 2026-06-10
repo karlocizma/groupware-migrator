@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -19,6 +20,16 @@ from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.state import SQLiteStateStore, derive_batch_status
 from groupware_migrator.models import JobStatus, MigrationPlan, MigrationRequest
 from groupware_migrator.providers import get_provider_presets
+
+
+def _configure_logging() -> None:
+    level_name = os.environ.get("LOG_LEVEL", "INFO").upper()
+    level = getattr(logging, level_name, logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-8s %(name)s %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
 
 
 def _parse_json_blob(raw_payload: str) -> dict:
@@ -183,6 +194,7 @@ def _batch_payload_from_request(payload: dict) -> tuple[str | None, bool, dict, 
 
 
 def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
+    _configure_logging()
     state_store = SQLiteStateStore(Path(state_db_path))
     runner = MigrationRunner(state_store=state_store)
     background_jobs = BackgroundJobManager(

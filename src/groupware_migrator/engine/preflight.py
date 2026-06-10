@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -11,6 +12,8 @@ from groupware_migrator.connectors.factory import (
 from groupware_migrator.engine.planner import MigrationPlanner
 from groupware_migrator.engine.state import SQLiteStateStore
 from groupware_migrator.models import MigrationRequest, SyncMode, WorkloadType
+
+logger = logging.getLogger(__name__)
 
 
 def _utcnow_iso() -> str:
@@ -104,6 +107,7 @@ def run_preflight(
         source_connector.validate()
         result["source"]["ok"] = True
     except Exception as exc:
+        logger.debug("Preflight source validation failed: %s", type(exc).__name__)
         result["source"]["error"] = _exc_message(exc)
         result["plan"]["error"] = "Skipped because source connection validation failed."
 
@@ -111,6 +115,7 @@ def run_preflight(
         destination_connector.validate()
         result["destination"]["ok"] = True
     except Exception as exc:
+        logger.debug("Preflight destination validation failed: %s", type(exc).__name__)
         result["destination"]["error"] = _exc_message(exc)
 
     if result["source"]["ok"] and incremental_resolution_error is None:

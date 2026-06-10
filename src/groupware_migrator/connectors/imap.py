@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 import imaplib
+import logging
 import re
 import ssl
 from typing import Iterable
@@ -24,6 +25,8 @@ from groupware_migrator.models import (
     SourceProtocol,
     TlsProfile,
 )
+
+logger = logging.getLogger(__name__)
 
 _FLAGS_PATTERN = re.compile(r"FLAGS \((?P<flags>[^\)]*)\)")
 _INTERNALDATE_PATTERN = re.compile(r'INTERNALDATE "(?P<date>[^"]+)"')
@@ -238,6 +241,7 @@ class _ImapConnectorBase:
             if status != "OK":
                 raise RuntimeError("IMAP NOOP failed during validation.")
             self._discover_hierarchy_delimiter(client)
+        logger.debug("IMAP source connection validated: %s@%s", self.config.username, self.config.host)
 
 
 class ImapSourceConnector(_ImapConnectorBase, SourceConnector):

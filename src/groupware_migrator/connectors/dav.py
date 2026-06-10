@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import logging
 import ssl
 from typing import Iterable
 from urllib.error import HTTPError
@@ -23,6 +24,8 @@ from groupware_migrator.models import (
     TlsProfile,
 )
 
+
+logger = logging.getLogger(__name__)
 
 _DAV_NS = "DAV:"
 _CALDAV_NS = "urn:ietf:params:xml:ns:caldav"
@@ -266,6 +269,7 @@ class _DavConnectorBase:
 
     def validate(self) -> None:
         self._propfind(self._base_path, depth=0)
+        logger.debug("DAV connection validated: %s@%s", self.config.username, self.config.host)
 
 
 class _DavSourceConnector(_DavConnectorBase, SourceConnector):
