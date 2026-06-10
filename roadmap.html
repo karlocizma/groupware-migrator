@@ -459,6 +459,11 @@
     // Restore state on load
     (function init() {
       const checks = loadChecks();
+      // Phase 1 shipped — seed as complete on first visit
+      ['1-1','1-2','1-3','1-4','1-5','1-6'].forEach(t => {
+        if (!(t in checks)) checks[t] = true;
+      });
+      saveChecks(checks);
       document.querySelectorAll('.task-check').forEach(el => {
         if (checks[el.dataset.task]) {
           el.checked = true;
