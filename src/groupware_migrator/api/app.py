@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -181,13 +183,30 @@ def _batch_payload_from_request(payload: dict) -> tuple[str | None, bool, dict, 
 
 
 def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
-    app = FastAPI(title="Groupware Migrator", version="0.3.0")
     state_store = SQLiteStateStore(Path(state_db_path))
     runner = MigrationRunner(state_store=state_store)
     background_jobs = BackgroundJobManager(
         state_store=state_store,
         runner=runner,
     )
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        try:
+            recovered = state_store.recover_stuck_jobs()
+            if recovered:
+                logging.getLogger(__name__).warning(
+                    "Recovered %d job(s) stuck in running state on startup.", recovered
+                )
+        except Exception as exc:
+            logging.getLogger(__name__).error("Failed to recover stuck jobs on startup: %s", exc)
+        yield
+        try:
+            background_jobs.shutdown(wait=False)
+        except Exception as exc:
+            logging.getLogger(__name__).error("Error during background worker shutdown: %s", exc)
+
+    app = FastAPI(title="Groupware Migrator", version="0.3.0", lifespan=lifespan)
 
     app.state.state_store = state_store
     app.state.runner = runner
@@ -196,10 +215,6 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     static_dir = Path(__file__).resolve().parent / "static"
     if static_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(static_dir)), name="assets")
-
-    @app.on_event("shutdown")
-    def shutdown_background_workers() -> None:
-        background_jobs.shutdown(wait=False)
 
     @app.get("/")
     def ui_index() -> FileResponse:

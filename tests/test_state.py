@@ -353,5 +353,55 @@ class TestSQLiteStateStore(unittest.TestCase):
             )
 
 
+class TestRecoverStuckJobs(unittest.TestCase):
+    def _make_store(self, temp_dir: str) -> SQLiteStateStore:
+        return SQLiteStateStore(Path(temp_dir) / "state.db")
+
+    def _make_request(self) -> MigrationRequest:
+        return MigrationRequest.from_dict({
+            "source": {
+                "protocol": "imap",
+                "connection": {"host": "src", "username": "u", "password": "p"},
+            },
+            "destination": {
+                "protocol": "imap",
+                "connection": {"host": "dst", "username": "u", "password": "p"},
+            },
+        })
+
+    def test_recover_stuck_jobs_marks_running_as_failed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = self._make_store(tmp)
+            request = self._make_request()
+            plan = MigrationPlan()
+
+            # Create a job and manually force it into running state
+            job_id = store.create_job(request, plan)
+            store.set_job_status(job_id, JobStatus.RUNNING, set_started=True)
+
+            recovered = store.recover_stuck_jobs()
+
+            self.assertEqual(recovered, 1)
+            job = store.get_job(job_id)
+            self.assertEqual(job["status"], JobStatus.FAILED.value)
+            self.assertIsNotNone(job["last_error"])
+            self.assertIsNotNone(job["finished_at"])
+
+    def test_recover_stuck_jobs_ignores_completed_and_pending(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = self._make_store(tmp)
+            request = self._make_request()
+
+            job_pending = store.create_job(request, MigrationPlan())
+            job_completed = store.create_job(request, MigrationPlan())
+            store.set_job_status(job_completed, JobStatus.COMPLETED, set_finished=True)
+
+            recovered = store.recover_stuck_jobs()
+
+            self.assertEqual(recovered, 0)
+            self.assertEqual(store.get_job(job_pending)["status"], JobStatus.PENDING.value)
+            self.assertEqual(store.get_job(job_completed)["status"], JobStatus.COMPLETED.value)
+
+
 if __name__ == "__main__":
     unittest.main()

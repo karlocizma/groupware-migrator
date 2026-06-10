@@ -342,6 +342,28 @@ class SQLiteStateStore:
                 tuple(params),
             )
 
+    def recover_stuck_jobs(self) -> int:
+        """Mark jobs stuck in running state as failed. Returns count of recovered jobs."""
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE jobs
+                SET status = ?,
+                    last_error = ?,
+                    finished_at = ?,
+                    updated_at = ?
+                WHERE status = ?
+                """,
+                (
+                    JobStatus.FAILED.value,
+                    "Server restarted while job was running.",
+                    _utcnow_iso(),
+                    _utcnow_iso(),
+                    JobStatus.RUNNING.value,
+                ),
+            )
+            return cursor.rowcount
+
     def increment_counters(
         self,
         job_id: str,
