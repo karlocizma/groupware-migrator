@@ -50,6 +50,7 @@ def _job_response(job_row: dict, *, running: bool, include_payload: bool) -> dic
         "job_name": job_row["job_name"],
         "status": job_row["status"],
         "running": running,
+        "retry_count": int(job_row.get("retry_count") or 0),
         "workload": workload,
         "source_protocol": job_row["source_protocol"],
         "destination_protocol": job_row["destination_protocol"],

@@ -83,6 +83,16 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
         except Exception as exc:
             logging.getLogger(__name__).error("Admin bootstrap failed: %s", exc)
         yield
+        drain_timeout = float(os.environ.get("SHUTDOWN_DRAIN_TIMEOUT", "30"))
+        try:
+            still_running = background_jobs.drain(drain_timeout)
+            if still_running:
+                logging.getLogger(__name__).warning(
+                    "Shutdown: %d job(s) still running after %.0fs drain timeout; forcing stop.",
+                    still_running, drain_timeout,
+                )
+        except Exception as exc:
+            logging.getLogger(__name__).error("Error draining background jobs: %s", exc)
         try:
             background_jobs.shutdown(wait=False)
         except Exception as exc:

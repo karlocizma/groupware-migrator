@@ -1,175 +1,214 @@
 # Groupware Migrator
-Local-first migration tool for mail, calendar, and contacts migration with an extensible protocol adapter architecture.
-## MVP scope
-- Source protocols: IMAP, POP3, CalDAV, CardDAV
-- Destination protocols: IMAP, CalDAV, CardDAV
-- Core capabilities:
-  - Workload-aware migration for `mail`, `calendar`, and `contacts` (with `tasks`/`notes` intentionally deferred)
-  - Connection validation
-  - Migration planning
-  - Asynchronous/background migration execution
-  - CSV-driven batch migration for multi-user waves
-  - Preflight checks for single jobs and CSV batches
-  - Tabbed dashboard modes for single-user vs multi-user migration flows
-  - Collapsible advanced settings for optional transport and migration controls
-  - Password and OAuth/XOAUTH2 authentication modes for IMAP/POP3/CalDAV/CardDAV connectors
-  - Full and incremental sync modes with persisted mailbox cursors
-  - Checkpointed/resumable jobs
-  - Idempotent item migration (duplicate prevention; mailbox/message aliases preserved for mail compatibility)
-  - SQLite-backed migration state
-  - Structured audit events and exportable job reports (JSON/CSV)
-  - Provider presets with auth guidance and TLS profile controls
-  - Modern web UI for plan creation and live job tracking over SSE
-## Current milestone features
-- Workload expansion (calendar + contacts):
-  - CalDAV and CardDAV source/destination connectors
-  - Collection/item planning and execution model with backward-compatible mailbox/message aliases
-  - Workload selection across API/UI (`mail`, `calendar`, `contacts`)
-  - Provider presets include CalDAV/CardDAV endpoint defaults where available
-- Rich IMAP folder handling:
-  - LIST response parsing with delimiter discovery
-  - `\\Noselect` folders excluded from migration plans
-  - Delimiter-aware destination mailbox creation
-  - TLS profile selection (`modern`, `compatibility`) for IMAP/POP3
-- Structured audit/reporting:
-  - Per-job audit events persisted in SQLite (`audit_events`)
-  - Event APIs for recent operational trail
-  - Full report export APIs (JSON or downloadable CSV)
-- Live updates via Server-Sent Events:
-  - Job list stream endpoint
-  - Selected-job detail stream endpoint
-  - Dashboard EventSource clients (replaces interval polling loop)
-- CSV batch migration:
-  - Preview CSV validation before launch
-  - Start migration waves with one row per user/account pair
-  - Track batch-level status + row/job status with SSE
-  - Allow strict mode (all rows valid) or partial mode (start only valid rows)
-- Preflight checks:
-  - Single-job preflight validates source + destination and attempts plan generation
-  - Batch preflight runs row-level checks (configurable limit) and reports pass/fail counts
-  - Dashboard shows per-check status, warnings, and row-level batch preflight badges
-- Provider presets and auth guidance:
-  - Presets: custom, Gmail, Microsoft 365, Yahoo, Zoho
-  - Auto-fill defaults for host/port/SSL/TLS profile/auth mode
-  - Provider-specific auth guidance with OAuth token endpoint/scope hints
-- OAuth/XOAUTH2 auth mode:
-  - `auth_mode` supported in connection payloads (`password` or `oauth2`)
-  - XOAUTH2 used for IMAP source/destination and POP3 source when `oauth2` is selected
-  - Supports direct `oauth_access_token` or refresh-token exchange (`oauth_refresh_token` + client credentials + token URL)
-- Delta/incremental sync mode:
-  - `options.sync_mode` supports `full` and `incremental`; `options.incremental_base_job_id` can anchor cursors to a completed base job
-  - Persistent cursor state is stored per migration identity in SQLite (`sync_cursors`) and can also resolve from base job checkpoints
-  - Planner/preflight consume resolved cursors and use connector pending-estimate hooks for IMAP/POP3 mailbox sizing
-  - Runner starts each mailbox from resolved cursor/checkpoint and updates durable sync cursors after successful non-dry incremental jobs
-  - Dashboard advanced settings include sync mode + optional base job ID, and preflight now displays incremental resolution metadata
-  - Batch CSV parser supports row-level incremental overrides (`sync_mode`, `incremental_base_job_id`)
-- Dashboard UX cleanup:
-  - Mode tabs split the form into `Single User Migration` and `Multiple Users (Batch CSV)`
-  - Non-essential fields are grouped under `Show advanced settings` (single mode)
-  - Batch-only optional controls are grouped under `Show batch advanced settings`
-## Project layout
-- `src/groupware_migrator/connectors/`: protocol adapters (IMAP, POP3, CalDAV, CardDAV)
-- `src/groupware_migrator/engine/`: planner, preflight checks, runner, idempotency, state store, background manager, reporting, batch CSV parsing
-- `src/groupware_migrator/models/`: domain models
-- `src/groupware_migrator/providers.py`: provider preset catalog and auth guidance
-- `src/groupware_migrator/api/`: FastAPI service and static UI
-- `src/groupware_migrator/api/static/`: dashboard UI assets (HTML/CSS/JS)
-- `src/groupware_migrator/cli.py`: CLI entrypoint
-- `tests/`: unit tests
-## Architecture knowledgebase
-- Workload model:
-  - Requests now include a `workload` dimension and support `mail`, `calendar`, and `contacts`.
-  - Protocol-workload pairing is validated in the domain layer (`mail` => IMAP/POP3 -> IMAP, `calendar` => CalDAV -> CalDAV, `contacts` => CardDAV -> CardDAV).
-  - `tasks` and `notes` types remain modeled but intentionally deferred from active migration execution.
-- Unified collection/item abstractions:
-  - Planning and execution operate on generic `collection` and `item` concepts for all workloads.
-  - Mail compatibility is preserved through aliases (`mailbox`/`message`) in request parsing and serialized responses.
-  - `MigrationPlanItem` supports both new and legacy field names to avoid breaking existing mail tests/integrations.
-- Connector architecture:
-  - Source connectors expose listing and iteration via collection/item contracts with message wrappers for mail.
-  - Destination connectors expose generic ensure/upsert operations with append wrappers for mail compatibility.
-  - CalDAV/CardDAV connectors use WebDAV methods (PROPFIND/GET/PUT/MKCOL) and support both password auth and OAuth bearer flows.
-- Execution pipeline:
-  - Planner builds workload-aware migration plans using collection snapshots and optional incremental cursors.
-  - Runner processes source items through idempotency fingerprinting, destination upsert/appends, and checkpoint updates.
-  - Preflight validates source/destination connectivity, plan generation, and incremental cursor resolution metadata.
-  - State persistence stores workload-aware sync identity and cursor/checkpoint data while keeping mail aliases in public payloads.
-- API/UI contract:
-  - API responses expose `workload`, `collections`, and `total_estimated_items` with legacy mailbox/message summary aliases.
-  - UI supports workload selection, protocol auto-alignment for calendar/contacts, collection-oriented plan/preflight rendering, and unchanged mail flows.
-  - Batch parsing supports workload/protocol overrides and collection-based alias fields (`collection_mapping`/`folder_mapping`, `source_include_collections`/`source_include_mailboxes`).
+
+Local-first tool for migrating email, calendar, and contacts between servers. Runs as a web application or CLI. Supports IMAP, POP3, CalDAV, and CardDAV with resumable background jobs, CSV batch migration, and a live-streaming dashboard.
+
+## Features
+
+- **Workloads:** `mail` (IMAP/POP3 → IMAP), `calendar` (CalDAV → CalDAV), `contacts` (CardDAV → CardDAV)
+- **Background jobs:** asynchronous execution with live SSE progress updates
+- **Batch migration:** CSV-driven multi-user waves with per-row overrides
+- **Incremental sync:** cursor-based delta sync; anchored to a completed base job or persisted cursors
+- **Preflight checks:** validates source/destination connectivity and plan readiness before execution
+- **Idempotency:** fingerprint-based duplicate prevention across runs
+- **Auth modes:** password and OAuth/XOAUTH2 (direct access token or refresh-token exchange)
+- **Provider presets:** Gmail, Microsoft 365, Yahoo, Zoho — auto-fill host/port/TLS/auth defaults
+- **Multi-user:** JWT session authentication, per-user job scoping, API key support
+- **Reports:** per-job structured audit events, JSON/CSV export
+
 ## Quick start
-1. Create and activate a virtual environment.
-2. Install the project:
-   - `pip install -e .`
-3. Build a migration plan in CLI (example):
-   - `groupware-migrator --config examples/migration-config.example.json --plan-only`
-4. Start the web UI:
-   - `uvicorn groupware_migrator.api.app:create_app --factory --reload`
-   - Open `http://127.0.0.1:8000`
+
+```bash
+# 1. Create a virtual environment
+python3 -m venv .venv && source .venv/bin/activate
+
+# 2. Install
+pip install -e ".[dev]"
+
+# 3. Start the web UI
+ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=changeme ./start.sh
+
+# 4. Open http://127.0.0.1:8000/login
+```
+
+### Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `JWT_SECRET` | random (sessions don't survive restart) | Secret key for JWT session tokens |
+| `ADMIN_EMAIL` | — | Email for first admin account (created on first startup if no users exist) |
+| `ADMIN_PASSWORD` | — | Password for first admin account |
+| `JWT_TTL_HOURS` | `8` | Session token lifetime in hours |
+| `COOKIE_SECURE` | `false` | Set to `true` in HTTPS production deployments |
+| `LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `PORT` | `8000` | Port for the web server (used by `start.sh`) |
+| `SHUTDOWN_DRAIN_TIMEOUT` | `30` | Seconds to wait for running jobs to finish before forced shutdown |
+
 ## CLI usage
-```bash path=null start=null
-groupware-migrator --config /path/to/migration.json
+
+```bash
+# Run a migration
+groupware-migrator --config examples/migration-config.example.json --plan-only
 groupware-migrator --config /path/to/migration.json --dry-run
 groupware-migrator --config /path/to/migration.json --resume-job-id <job_id>
 groupware-migrator --config /path/to/migration.json --state-db /path/to/state.db
+
+# Backup the state database
+groupware-migrator backup --output /path/to/backup.db
+groupware-migrator backup --state-db /path/to/state.db --output /backup/state-$(date +%Y%m%d).db
+
+# Restore from a backup
+groupware-migrator restore --from /path/to/backup.db
+groupware-migrator restore --from /path/to/backup.db --force  # overwrite existing db
 ```
-## Run tests
-```bash path=null start=null
+
+## Development
+
+```bash
+# Run all tests
 PYTHONPATH=src python3 -m unittest discover -s tests -v
+
+# Run a single test file
+PYTHONPATH=src python3 -m unittest tests/test_runner.py -v
+
+# Lint
+ruff check src tests
+
+# Start manually (with reload)
+uvicorn groupware_migrator.api.app:create_app --factory --reload
 ```
-## API endpoints
-- `GET /api/providers` - list provider presets, defaults, and auth guidance.
-- `POST /api/jobs/preflight` - validate source/destination connectivity and plan readiness (includes incremental cursor metadata when enabled).
-- `POST /api/batches/preview` - validate CSV rows against a base request template.
-- `POST /api/batches/preflight` - run limited row-level preflight checks for batch rows.
-- `POST /api/batches/start` - create and start a batch wave from CSV rows.
-- `GET /api/batches` - list recent batch waves.
-- `GET /api/batches/{batch_id}` - get batch summary + row-level status.
-- `GET /api/batches/stream` - SSE stream for recent batch summaries.
-- `GET /api/batches/{batch_id}/stream` - SSE stream for one selected batch.
-- `POST /api/jobs/plan` - build migration plan from request payload.
-- `POST /api/jobs/start` - create and run a job in background.
-- `POST /api/jobs/run` - run synchronously.
-- `POST /api/jobs/resume` - resume an existing job in background (requires `job_id` + request payload).
-- `GET /api/jobs` - list recent jobs.
-- `GET /api/jobs/{job_id}` - get full job details.
-- `GET /api/jobs/{job_id}/events` - list structured audit events.
-- `GET /api/jobs/{job_id}/report?format=json|csv` - export a full job report.
-- `GET /api/jobs/stream` - SSE stream of recent jobs.
-- `GET /api/jobs/{job_id}/stream` - SSE stream for selected job detail.
+
+## API reference
+
+All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bearer <api-key>`).
+
+### Auth
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/auth/login` | Log in; sets `gm_session` cookie |
+| `POST` | `/auth/logout` | Clear session cookie |
+| `GET` | `/auth/me` | Current user info |
+| `POST` | `/auth/users` | Create a user (admin only) |
+| `GET` | `/auth/users` | List users (admin only) |
+| `POST` | `/auth/keys` | Create an API key |
+| `GET` | `/auth/keys` | List your API keys |
+| `DELETE` | `/auth/keys/{key_id}` | Revoke an API key |
+
+### Jobs
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/jobs/preflight` | Validate connectivity and plan readiness |
+| `POST` | `/api/jobs/plan` | Build migration plan |
+| `POST` | `/api/jobs/start` | Start a background job |
+| `POST` | `/api/jobs/resume` | Resume an existing job |
+| `POST` | `/api/jobs/run` | Run synchronously (blocking) |
+| `GET` | `/api/jobs` | List recent jobs |
+| `GET` | `/api/jobs/{job_id}` | Get full job details |
+| `GET` | `/api/jobs/{job_id}/events` | List audit events |
+| `GET` | `/api/jobs/{job_id}/report` | Export job report (`?format=json` or `csv`) |
+| `GET` | `/api/jobs/stream` | SSE stream of recent jobs |
+| `GET` | `/api/jobs/{job_id}/stream` | SSE stream for one job |
+
+### Batches
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/batches/preview` | Validate CSV rows |
+| `POST` | `/api/batches/preflight` | Row-level preflight for CSV batch |
+| `POST` | `/api/batches/start` | Start a batch wave |
+| `GET` | `/api/batches` | List recent batches |
+| `GET` | `/api/batches/{batch_id}` | Get batch summary + rows |
+| `GET` | `/api/batches/stream` | SSE stream of recent batches |
+| `GET` | `/api/batches/{batch_id}/stream` | SSE stream for one batch |
+
+### Providers
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/providers` | List provider presets with defaults and auth guidance |
+
 ## CSV batch format
-- Each CSV row represents one migration job.
-- Recommended minimal columns:
-  - `job_name`
-  - `source_username`
-  - `source_password`
-  - `destination_username`
-  - `destination_password`
-- Optional override columns (examples): `workload`, `source_protocol`, `destination_protocol`, `source_host`, `source_port`, `destination_host`, `destination_port`, `source_include_collections` (alias: `source_include_mailboxes`), `destination_root_collection` (alias: `destination_root_mailbox`), `collection_mapping` (alias: `folder_mapping`), `dry_run`, `max_errors`.
-- Incremental override columns:
-  - `sync_mode` (`full` or `incremental`)
-  - `incremental_base_job_id` (completed job ID to use as incremental baseline)
-- OAuth/auth override columns are also supported, including:
-  - `source_auth_mode`, `source_oauth_access_token`, `source_oauth_refresh_token`, `source_oauth_client_id`, `source_oauth_client_secret`, `source_oauth_token_url`, `source_oauth_scope`
-  - `destination_auth_mode`, `destination_oauth_access_token`, `destination_oauth_refresh_token`, `destination_oauth_client_id`, `destination_oauth_client_secret`, `destination_oauth_token_url`, `destination_oauth_scope`
-- The dashboard sends current form values as `base_request`, and CSV columns override per-row fields.
-- Sample file: `examples/batch-users.example.csv`
-## Dashboard workflow
-- Choose one mode at the top of the form:
-  - `Single User Migration` for one account pair and job-level actions (`Run Preflight`, `Build Plan`, `Start Background Job`)
-  - `Multiple Users (Batch CSV)` for CSV preview/preflight/start batch actions
-- Choose `workload` (`mail`, `calendar`, or `contacts`) before filling connection fields. Calendar/contacts automatically pin compatible protocol choices.
-- Fill required connection and credential fields in the default form surface.
-- Open advanced panels only when needed:
-  - Single mode advanced panel contains auth mode, OAuth token/client fields, TLS profile, SSL toggles, include-mailboxes, destination root, POP3 destination mailbox, folder mapping, max-errors, and dry-run.
-  - Single mode advanced panel also contains sync mode and optional incremental base job ID.
-  - Batch advanced panel contains `allow partial` behavior and `batch preflight row limit`.
-- Provider presets continue to set host/port/SSL/TLS/auth-mode defaults (plus OAuth token URL/scope hints) even when advanced fields are collapsed.
-- In OAuth mode:
-  - Provide either `OAuth access token` directly, or a refresh flow (`refresh token`, `client ID`, `client secret`, and `token URL`).
-  - Password fields are not used for auth execution.
+
+Each row represents one migration job. Columns in the CSV override the base request sent from the form.
+
+**Required columns:** `source_username`, `source_password`, `destination_username`, `destination_password`
+
+**Common override columns:** `job_name`, `workload`, `source_protocol`, `source_host`, `source_port`, `destination_host`, `destination_port`, `destination_root_collection`, `dry_run`, `max_errors`, `sync_mode`, `incremental_base_job_id`
+
+**OAuth columns:** `source_auth_mode`, `source_oauth_access_token`, `source_oauth_refresh_token`, `source_oauth_client_id`, `source_oauth_client_secret`, `source_oauth_token_url`, `destination_auth_mode`, and equivalents.
+
+See `examples/batch-users.example.csv` for a sample file.
+
+## Architecture
+
+```
+groupware_migrator/
+├── api/
+│   ├── app.py              # FastAPI factory, lifespan, route mounting
+│   ├── auth.py             # JWT creation/validation, FastAPI Depends
+│   ├── schemas.py          # Pydantic request models
+│   ├── routers/
+│   │   ├── auth_router.py  # /auth/* endpoints
+│   │   ├── jobs.py         # /jobs/* endpoints
+│   │   ├── batches.py      # /batches/* endpoints
+│   │   └── providers.py    # /providers endpoint
+│   └── static/
+│       ├── index.html
+│       ├── login.html
+│       ├── styles.css
+│       └── js/
+│           ├── main.js     # App entry point (ES module)
+│           ├── api.js      # Fetch wrapper with 401 redirect
+│           └── form.js     # localStorage form persistence
+├── connectors/
+│   ├── imap.py             # IMAP source + destination
+│   ├── pop3.py             # POP3 source
+│   ├── dav.py              # CalDAV + CardDAV (PROPFIND/GET/PUT/MKCOL)
+│   ├── auth.py             # OAuth token resolution
+│   └── factory.py          # Protocol → connector dispatch
+├── engine/
+│   ├── state.py            # SQLiteStateStore; all persistence
+│   ├── background.py       # BackgroundJobManager (ThreadPoolExecutor)
+│   ├── runner.py           # MigrationRunner; item iteration → upsert
+│   ├── planner.py          # MigrationPlan construction
+│   ├── preflight.py        # Connectivity + plan validation
+│   ├── idempotency.py      # Fingerprint-based duplicate detection
+│   ├── batch.py            # CSV parsing + batch row building
+│   └── reporting.py        # Audit event queries, JSON/CSV export
+├── models/
+│   └── domain.py           # MigrationRequest, MigrationPlan, enums
+├── providers.py            # Provider preset catalog
+└── cli.py                  # CLI entrypoint
+```
+
+### State store (SQLite)
+
+All persistence goes through `SQLiteStateStore`. Key tables:
+
+| Table | Purpose |
+|---|---|
+| `users` | User accounts with bcrypt password hashes |
+| `api_keys` | Hashed API keys per user |
+| `jobs` | Migration jobs with status, counters, `user_id` |
+| `batches` | Batch waves with summary counters, `user_id` |
+| `batch_items` | Per-row job references within a batch |
+| `checkpoints` | Per-job mailbox resume positions |
+| `sync_cursors` | Persisted incremental sync positions (keyed by identity hash) |
+| `message_migrations` | Fingerprint ledger for idempotency |
+| `audit_events` | Structured per-job event log |
+
+### Auth flow
+
+1. On first startup, if no users exist and `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set, an admin account is created.
+2. `POST /auth/login` validates password (bcrypt), issues a JWT in a `gm_session` HttpOnly cookie (8-hour TTL by default).
+3. All `/api/*` routes require the cookie or a `Authorization: Bearer <api-key>` header.
+4. Non-admin users see only their own jobs and batches; admins see all.
+5. API keys are SHA-256 hashed in the database; the raw key is returned once on creation.
+
 ## Notes
-- POP3 is supported as a source protocol only (destination POP3 is intentionally out of scope).
-- Current workload implementation priority is mail + calendar + contacts; tasks and notes remain deferred.
-- Credentials are not persisted in plaintext job metadata (job request snapshots are stored redacted).
+
+- POP3 is source-only (destination POP3 is out of scope).
+- `tasks` and `notes` workloads are modeled but not executed.
+- Credentials are not persisted in plaintext — job snapshots are stored redacted.
+- The `data/state.db` file is created automatically on first startup.

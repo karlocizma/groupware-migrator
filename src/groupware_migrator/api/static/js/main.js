@@ -355,6 +355,7 @@ function buildRequestPayload() {
       sync_mode: syncMode,
       dry_run: $('dry-run').checked,
       max_errors: normalizePortValue($('max-errors').value, 25),
+      max_retries: Math.max(0, parseInt($('max-retries')?.value || '0', 10)),
       pop3_destination_mailbox: $('pop3-destination-mailbox').value.trim() || 'POP3-Inbox',
     },
   };
@@ -1036,6 +1037,7 @@ function wireFormPersistence() {
     'workload': 'workload',
     'job-name': 'job_name',
     'sync-mode': 'sync_mode',
+    'max-retries': 'max_retries',
   });
 }
 

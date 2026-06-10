@@ -230,6 +230,11 @@ class SQLiteStateStore:
                 connection.execute("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
         except Exception:
             pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute("ALTER TABLE jobs ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass
 
     def create_job(self, request: MigrationRequest, plan: MigrationPlan, user_id: str | None = None) -> str:
         job_id = str(uuid.uuid4())
@@ -420,6 +425,13 @@ class SQLiteStateStore:
                 ),
             )
             return cursor.rowcount
+
+    def increment_retry_count(self, job_id: str, retry_attempt: int) -> None:
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                "UPDATE jobs SET retry_count = ?, status = ?, updated_at = ? WHERE job_id = ?",
+                (retry_attempt, JobStatus.PENDING.value, _utcnow_iso(), job_id),
+            )
 
     def cancel_job(self, job_id: str) -> bool:
         """Mark a pending job cancelled. Returns True if the job was updated."""

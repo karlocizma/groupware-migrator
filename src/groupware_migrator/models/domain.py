@@ -297,6 +297,7 @@ class MigrationOptions:
     dry_run: bool = False
     max_errors: int = 25
     pop3_destination_mailbox: str = "POP3-Inbox"
+    max_retries: int = 0
 
     @classmethod
     def from_dict(cls, payload: dict | None) -> "MigrationOptions":
@@ -318,6 +319,7 @@ class MigrationOptions:
             pop3_destination_mailbox=str(
                 payload.get("pop3_destination_mailbox", "POP3-Inbox")
             ),
+            max_retries=max(int(payload.get("max_retries", 0)), 0),
         )
 
     def to_dict(self) -> dict:
@@ -327,6 +329,7 @@ class MigrationOptions:
             "dry_run": self.dry_run,
             "max_errors": self.max_errors,
             "pop3_destination_mailbox": self.pop3_destination_mailbox,
+            "max_retries": self.max_retries,
         }
 
 

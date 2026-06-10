@@ -279,6 +279,12 @@
                     Max errors before abort
                     <input id="max-errors" type="number" min="1" value="25" />
                   </label>
+                  <label>
+                    Auto-retry on failure (0 = no retry)
+                    <input id="max-retries" type="number" min="0" max="5" value="0" />
+                  </label>
+                </div>
+                <div class="grid two-col">
                   <label class="check big-check">
                     <input id="dry-run" type="checkbox" />
                     Dry run (no writes)
