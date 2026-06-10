@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Groupware Migrator — Future Roadmap</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222533;
+      --border: rgba(255,255,255,0.08);
+      --accent: #6c8fff;
+      --accent2: #a78bfa;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --orange: #fb923c;
+      --cyan: #22d3ee;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 12px;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.6; min-height: 100vh; }
+
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.2; }
+    .orb-a { width: 700px; height: 700px; background: #3b4ff0; top: -250px; left: -200px; }
+    .orb-b { width: 500px; height: 500px; background: #7c3aed; bottom: -100px; right: -100px; }
+    .orb-c { width: 400px; height: 400px; background: #0891b2; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+    .container { position: relative; z-index: 1; max-width: 940px; margin: 0 auto; padding: 48px 24px 100px; }
+
+    header { margin-bottom: 48px; }
+    header h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #fff 30%, var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    header p { color: var(--muted); margin-top: 10px; font-size: 1rem; max-width: 680px; }
+    .meta { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+    .badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; color: var(--muted); }
+    .badge strong { color: var(--text); }
+
+    /* Foundation summary */
+    .foundation { background: var(--surface); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 48px; }
+    .foundation h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 14px; }
+    .foundation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .foundation-item { display: flex; align-items: center; gap: 8px; font-size: 0.87rem; color: #c8d5ff; }
+    .foundation-item::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; }
+
+    /* Phase */
+    .phase { margin-bottom: 36px; }
+    .phase-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .phase-number { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .phase-number.p4 { background: rgba(34,211,238,0.15); border: 1px solid rgba(34,211,238,0.4); color: var(--cyan); }
+    .phase-number.p5 { background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.4); color: var(--orange); }
+    .phase-number.p6 { background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.4); color: var(--accent2); }
+    .phase-number.p7 { background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4); color: var(--yellow); }
+    .phase-title { font-size: 1.15rem; font-weight: 600; }
+    .phase-effort { margin-left: auto; font-size: 0.76rem; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+
+    .phase-body { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+
+    .phase-desc { padding: 16px 20px; color: var(--muted); font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+    .phase-desc strong { color: var(--text); }
+
+    /* Feature groups inside a phase */
+    .feature-group { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .feature-group:last-child { border-bottom: none; }
+    .feature-group-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px; }
+
+    .feature-list { display: grid; gap: 8px; }
+    .feature { display: flex; align-items: flex-start; gap: 10px; }
+    .feature-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .feature-content { }
+    .feature-name { font-size: 0.9rem; font-weight: 500; }
+    .feature-detail { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+    /* Priority tags */
+    .tag { display: inline-block; border-radius: 6px; padding: 2px 7px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 6px; }
+    .tag.must { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+    .tag.should { background: rgba(251,191,36,0.12); color: #fde68a; border: 1px solid rgba(251,191,36,0.3); }
+    .tag.could { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+
+    /* Principles section */
+    .principles { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-top: 48px; }
+    .principles h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 20px; }
+    .principles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .principle { }
+    .principle-title { font-size: 0.92rem; font-weight: 600; margin-bottom: 4px; }
+    .principle-body { font-size: 0.83rem; color: var(--muted); }
+
+    /* Defer list */
+    .defer-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-top: 24px; }
+    .defer-section h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
+    .defer-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .defer-item { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 0.82rem; color: var(--muted); }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 1.6rem; }
+      .container { padding: 32px 16px 60px; }
+      .foundation-grid { grid-template-columns: 1fr; }
+      .principles-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
+
+  <div class="container">
+    <header>
+      <h1>Groupware Migrator — Future Roadmap</h1>
+      <p>What comes after the foundation. This roadmap covers production hardening, scheduling, observability, and enterprise features for the project's next evolution.</p>
+      <div class="meta">
+        <div class="badge">As of <strong>June 2026</strong></div>
+        <div class="badge">Foundation <strong>complete</strong> (Phases 1–3)</div>
+        <div class="badge">4 phases ahead</div>
+      </div>
+    </header>
+
+    <!-- Foundation summary -->
+    <div class="foundation">
+      <h2>Foundation — Phases 1–3 Complete</h2>
+      <div class="foundation-grid">
+        <div class="foundation-item">IMAP/POP3/CalDAV/CardDAV connectors</div>
+        <div class="foundation-item">Background jobs + crash recovery</div>
+        <div class="foundation-item">CSV batch migration (multi-user waves)</div>
+        <div class="foundation-item">Incremental sync with cursor persistence</div>
+        <div class="foundation-item">Preflight checks (single + batch)</div>
+        <div class="foundation-item">SSE live progress streams</div>
+        <div class="foundation-item">JWT + HttpOnly cookie auth</div>
+        <div class="foundation-item">Per-user job scoping</div>
+        <div class="foundation-item">API key support</div>
+        <div class="foundation-item">Admin bootstrap from env vars</div>
+        <div class="foundation-item">ES module frontend</div>
+        <div class="foundation-item">localStorage form persistence</div>
+        <div class="foundation-item">Loading states + mobile layout</div>
+        <div class="foundation-item">Structured audit events + reports</div>
+        <div class="foundation-item">75 unit tests, all green</div>
+      </div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p4">4</div>
+        <div class="phase-title">Production Hardening</div>
+        <div class="phase-effort">~3–4 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Make the application deployable in real environments: <strong>Docker packaging</strong>, <strong>rate limiting</strong>, proper <strong>secret management</strong>, and <strong>health/readiness probes</strong>. No new user-visible features — this phase makes existing features reliable at scale.
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Deployment</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🐳</div>
+              <div class="feature-content">
+                <div class="feature-name">Docker + docker-compose <span class="tag must">must</span></div>
+                <div class="feature-detail">Multi-stage Dockerfile. docker-compose with volume-mounted `data/state.db` and env file for secrets. No root user.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔁</div>
+              <div class="feature-content">
+                <div class="feature-name">Reverse proxy guide <span class="tag must">must</span></div>
+                <div class="feature-detail">Example nginx config with HTTPS termination, `proxy_pass`, and correct SSE headers (`X-Accel-Buffering: no`).</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🗄️</div>
+              <div class="feature-content">
+                <div class="feature-name">Backup + restore CLI <span class="tag should">should</span></div>
+                <div class="feature-detail">`groupware-migrator backup` and `restore` commands for `state.db` with integrity verification.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Security</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🚦</div>
+              <div class="feature-content">
+                <div class="feature-name">Rate limiting on auth endpoints <span class="tag must">must</span></div>
+                <div class="feature-detail">Throttle `/auth/login` to prevent brute-force. SlowAPI or custom middleware, keyed by IP. Lock account after N failures.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔑</div>
+              <div class="feature-content">
+                <div class="feature-name">Password change + reset flow <span class="tag should">should</span></div>
+                <div class="feature-detail">`POST /auth/change-password` (requires current password). Admin-triggered reset token or out-of-band link.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🛡️</div>
+              <div class="feature-content">
+                <div class="feature-name">Security headers middleware <span class="tag should">should</span></div>
+                <div class="feature-detail">Add `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` via FastAPI middleware.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Reliability</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">❤️</div>
+              <div class="feature-content">
+                <div class="feature-name">Liveness vs. readiness probes <span class="tag must">must</span></div>
+                <div class="feature-detail">Separate `/health/live` (always 200) and `/health/ready` (checks DB connectivity). Kubernetes-compatible.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔄</div>
+              <div class="feature-content">
+                <div class="feature-name">Job retry policy <span class="tag should">should</span></div>
+                <div class="feature-detail">Optional auto-retry on transient errors (configurable `max_retries` per job). Exponential backoff. Visible in audit events.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">💾</div>
+              <div class="feature-content">
+                <div class="feature-name">Graceful shutdown with drain <span class="tag should">should</span></div>
+                <div class="feature-detail">On SIGTERM, stop accepting new jobs, wait up to N seconds for running jobs to finish checkpointing, then shut down cleanly.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 5 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p5">5</div>
+        <div class="phase-title">Scheduling &amp; Automation</div>
+        <div class="phase-effort">~4–5 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Let migrations run <strong>automatically on a schedule</strong>, notify users of completions/failures, and support <strong>automated pipelines</strong> via webhooks. The engine is already incremental-sync-capable — this phase puts that capability on autopilot.
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Scheduled Jobs</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📅</div>
+              <div class="feature-content">
+                <div class="feature-name">Cron-style job schedules <span class="tag must">must</span></div>
+                <div class="feature-detail">Store cron expressions in `scheduled_jobs` SQLite table. Background scheduler thread fires incremental migrations on schedule. UI to create/pause/delete schedules.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔁</div>
+              <div class="feature-content">
+                <div class="feature-name">Schedule history + next-run display <span class="tag must">must</span></div>
+                <div class="feature-detail">Dashboard shows next scheduled run, last run time, and last run status for each schedule.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">⏸️</div>
+              <div class="feature-content">
+                <div class="feature-name">Pause / resume schedules <span class="tag should">should</span></div>
+                <div class="feature-detail">Toggle a schedule off without deleting it. Useful during maintenance windows.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Notifications</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🔔</div>
+              <div class="feature-content">
+                <div class="feature-name">Webhook notifications <span class="tag must">must</span></div>
+                <div class="feature-detail">`POST /auth/webhooks` to register URLs. Fire on job completion, job failure, and batch completion. Signed with HMAC-SHA256. Retry on 5xx.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📧</div>
+              <div class="feature-content">
+                <div class="feature-name">Email notifications <span class="tag should">should</span></div>
+                <div class="feature-detail">Optional SMTP config (`SMTP_HOST`, `SMTP_USER`, etc.) for job completion/failure emails to the job owner. Plain-text + HTML template.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">💬</div>
+              <div class="feature-content">
+                <div class="feature-name">Slack / Teams webhook <span class="tag could">could</span></div>
+                <div class="feature-detail">Pre-built webhook format for Slack Incoming Webhooks and Teams connectors. Configured as a webhook type in the webhooks table.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Job Queue</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">⚖️</div>
+              <div class="feature-content">
+                <div class="feature-name">Job priority levels <span class="tag should">should</span></div>
+                <div class="feature-detail">High/normal/low priority queue. Priority set at job creation time. High-priority jobs preempt normal queue slots.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🚫</div>
+              <div class="feature-content">
+                <div class="feature-name">Job cancellation <span class="tag must">must</span></div>
+                <div class="feature-detail">`POST /api/jobs/{job_id}/cancel` — gracefully stops a running job, marks it cancelled (not failed). Already checkpointed items are preserved.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 6 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p6">6</div>
+        <div class="phase-title">Admin Dashboard &amp; Observability</div>
+        <div class="phase-effort">~3–4 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Give administrators <strong>first-class tooling</strong> to manage users, inspect system health, and understand migration patterns across all tenants. This is about turning raw data into actionable insight.
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Admin UI</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">👥</div>
+              <div class="feature-content">
+                <div class="feature-name">User management panel <span class="tag must">must</span></div>
+                <div class="feature-detail">List users, create/deactivate accounts, reset passwords, view per-user job counts and last activity. Admin-only tab in the dashboard.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📊</div>
+              <div class="feature-content">
+                <div class="feature-name">System overview dashboard <span class="tag must">must</span></div>
+                <div class="feature-detail">Total jobs (last 7/30 days), success rate, items migrated, active jobs, queue depth. Auto-refreshing cards.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔍</div>
+              <div class="feature-content">
+                <div class="feature-name">Cross-user job search <span class="tag should">should</span></div>
+                <div class="feature-detail">Admins can search/filter jobs by user, status, date range, protocol, and workload from the admin panel.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Metrics &amp; Monitoring</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📈</div>
+              <div class="feature-content">
+                <div class="feature-name">Prometheus metrics endpoint <span class="tag should">should</span></div>
+                <div class="feature-detail">`GET /metrics` (Prometheus format). Expose: active jobs, queue depth, jobs/hour, error rate, SQLite size, worker thread counts.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🪵</div>
+              <div class="feature-content">
+                <div class="feature-name">Structured JSON logging <span class="tag should">should</span></div>
+                <div class="feature-detail">Optional `LOG_FORMAT=json` env var switches to JSON log lines with `job_id`, `user_id`, `duration_ms` fields for log aggregation (Loki, Datadog).</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🐛</div>
+              <div class="feature-content">
+                <div class="feature-name">Sentry / error tracking integration <span class="tag could">could</span></div>
+                <div class="feature-detail">Optional `SENTRY_DSN` env var. Capture unhandled exceptions in background workers and API handlers with job/user context.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Audit &amp; Compliance</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📋</div>
+              <div class="feature-content">
+                <div class="feature-name">Admin audit log <span class="tag must">must</span></div>
+                <div class="feature-detail">Record all admin actions (user creation, deletion, password reset, API key revocation) in a separate `admin_audit_events` table. Exportable CSV.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🗑️</div>
+              <div class="feature-content">
+                <div class="feature-name">Data retention policies <span class="tag should">should</span></div>
+                <div class="feature-detail">Configurable max age for completed jobs, audit events, and batch records. Background cleanup job runs nightly. Prevents SQLite bloat on long-running instances.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 7 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p7">7</div>
+        <div class="phase-title">Enterprise Auth &amp; Multi-tenancy</div>
+        <div class="phase-effort">~6–8 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Support enterprise authentication patterns and <strong>true multi-tenant isolation</strong>: organizations with their own data spaces, SSO login, and role-based access beyond the current admin/user binary. Requires careful schema migrations and security review.
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Authentication</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🏢</div>
+              <div class="feature-content">
+                <div class="feature-name">SAML 2.0 / OIDC SSO <span class="tag should">should</span></div>
+                <div class="feature-detail">Support external IdP (Okta, Azure AD, Google Workspace). Users auto-provisioned on first SSO login. Configurable via `SSO_PROVIDER`, `SSO_ENTITY_ID`, etc.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📁</div>
+              <div class="feature-content">
+                <div class="feature-name">LDAP / Active Directory bind <span class="tag could">could</span></div>
+                <div class="feature-detail">Bind LDAP for credential validation. Group membership maps to roles. Useful for on-premises enterprise deployments.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📱</div>
+              <div class="feature-content">
+                <div class="feature-name">TOTP two-factor auth <span class="tag should">should</span></div>
+                <div class="feature-detail">Optional per-user TOTP (Google Authenticator compatible). QR code enrollment via `/auth/totp/setup`. Recovery codes generated at setup.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Multi-tenancy</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🏗️</div>
+              <div class="feature-content">
+                <div class="feature-name">Organizations / workspaces <span class="tag should">should</span></div>
+                <div class="feature-detail">Add `organizations` table. Users belong to one org. Jobs and batches scoped to org. Org admins manage their members. Super-admins see all orgs.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🎭</div>
+              <div class="feature-content">
+                <div class="feature-name">Role-based access control (RBAC) <span class="tag should">should</span></div>
+                <div class="feature-detail">Roles: `viewer` (read-only), `operator` (create/resume jobs), `admin` (user management), `super_admin` (cross-org). Replace boolean `is_admin`.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔒</div>
+              <div class="feature-content">
+                <div class="feature-name">Credential vault <span class="tag could">could</span></div>
+                <div class="feature-detail">Encrypt connection passwords at rest using AES-256-GCM with a `VAULT_KEY` env var. Decrypt only at connector creation time in worker threads.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-group">
+          <div class="feature-group-title">Ecosystem</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📦</div>
+              <div class="feature-content">
+                <div class="feature-name">Plugin / connector SDK <span class="tag could">could</span></div>
+                <div class="feature-detail">Document the `SourceConnector` / `DestinationConnector` abstract interfaces. Publish a cookiecutter template for custom protocol adapters (e.g., Exchange EWS, Nextcloud).</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🌐</div>
+              <div class="feature-content">
+                <div class="feature-name">REST API versioning <span class="tag should">should</span></div>
+                <div class="feature-detail">Introduce `/api/v1/` prefix with explicit API version in responses. Add OpenAPI schema export at `/api/openapi.json`. SDK generation from schema.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Design principles -->
+    <div class="principles">
+      <h2>Guiding Principles for Future Development</h2>
+      <div class="principles-grid">
+        <div class="principle">
+          <div class="principle-title">Local-first by default</div>
+          <div class="principle-body">SQLite stays the default. PostgreSQL or other engines are opt-in via an abstraction layer, not the baseline. New features must work without external services.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Backward compatibility</div>
+          <div class="principle-body">Existing job payloads, CLI configs, and CSV formats must keep working. Schema migrations are always additive (no column drops, no renames without aliases).</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Test coverage gates every phase</div>
+          <div class="principle-body">Each phase must ship with tests covering the new behavior. No new feature lands without its test. Integration tests hit real SQLite, not mocks.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Security is not an afterthought</div>
+          <div class="principle-body">New auth features (TOTP, SSO, vault) come from requirements, not retrofits. Rate limiting, audit logs, and RBAC are Phase 4 and 7, not "later".</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Simple beats clever</div>
+          <div class="principle-body">No message queues, no microservices, no ORM until the SQLite + threading model demonstrably breaks. Each layer is added when the layer below it is insufficient.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Deploy anywhere</div>
+          <div class="principle-body">A single Docker container with one volume mount should be the happy path for every feature. Self-hosted, no cloud dependencies, no license server.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Intentionally out of scope -->
+    <div class="defer-section">
+      <h2>Intentionally Out of Scope (for now)</h2>
+      <div class="defer-list">
+        <div class="defer-item">PostgreSQL / MySQL backend</div>
+        <div class="defer-item">Tasks &amp; Notes workloads</div>
+        <div class="defer-item">Exchange EWS protocol</div>
+        <div class="defer-item">Real-time push (WebSockets beyond SSE)</div>
+        <div class="defer-item">Mobile apps</div>
+        <div class="defer-item">Billing / subscription tiers</div>
+        <div class="defer-item">Horizontal scaling (multi-instance)</div>
+        <div class="defer-item">Cloud storage for state (S3, GCS)</div>
+        <div class="defer-item">On-the-fly protocol conversion (IMAP→CalDAV)</div>
+        <div class="defer-item">Full-text search across migrated content</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
