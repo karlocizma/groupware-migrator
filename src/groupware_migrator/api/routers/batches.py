@@ -6,6 +6,7 @@ import json
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
+from groupware_migrator.api.schemas import BatchPayload, BatchPreflightPayload
 from groupware_migrator.engine.background import BackgroundJobManager
 from groupware_migrator.engine.batch import build_batch_preview, build_batch_rows
 from groupware_migrator.engine.preflight import run_preflight
@@ -97,20 +98,6 @@ def _batch_response(batch_row: dict, *, items: list[dict] | None = None) -> dict
     return response
 
 
-def _batch_payload_from_request(payload: dict) -> tuple[str | None, bool, dict, str]:
-    csv_content = payload.get("csv_content")
-    if not isinstance(csv_content, str) or not csv_content.strip():
-        raise ValueError("Missing required string field: csv_content.")
-    base_request_payload = payload.get("base_request", payload.get("request"))
-    if not isinstance(base_request_payload, dict):
-        raise ValueError("Missing required object field: base_request.")
-    batch_name = payload.get("batch_name")
-    if batch_name is not None:
-        batch_name = str(batch_name).strip() or None
-    allow_partial = bool(payload.get("allow_partial", False))
-    return batch_name, allow_partial, base_request_payload, csv_content
-
-
 def create_batches_router(
     state_store: SQLiteStateStore,
     background_jobs: BackgroundJobManager,
@@ -118,12 +105,11 @@ def create_batches_router(
     router = APIRouter()
 
     @router.post("/batches/preflight")
-    def preflight_batch(payload: dict) -> dict:
+    def preflight_batch(payload: BatchPreflightPayload) -> dict:
         try:
-            _, _, base_request_payload, csv_content = _batch_payload_from_request(payload)
-            limit = max(min(int(payload.get("limit", 20)), 200), 1)
-            rows = build_batch_rows(csv_content, base_request_payload=base_request_payload)
+            rows = build_batch_rows(payload.csv_content, base_request_payload=payload.base_request)
             preview = build_batch_preview(rows)
+            limit = payload.limit
             checked_rows = ok_rows = failed_rows = 0
             items: list[dict] = []
             for row in rows:
@@ -161,23 +147,19 @@ def create_batches_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/batches/preview")
-    def preview_batch(payload: dict) -> dict:
+    def preview_batch(payload: BatchPayload) -> dict:
         try:
-            _, _, base_request_payload, csv_content = _batch_payload_from_request(payload)
-            rows = build_batch_rows(csv_content, base_request_payload=base_request_payload)
+            rows = build_batch_rows(payload.csv_content, base_request_payload=payload.base_request)
             return build_batch_preview(rows)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/batches/start")
-    def start_batch(payload: dict) -> dict:
+    def start_batch(payload: BatchPayload) -> dict:
         try:
-            batch_name, allow_partial, base_request_payload, csv_content = (
-                _batch_payload_from_request(payload)
-            )
-            rows = build_batch_rows(csv_content, base_request_payload=base_request_payload)
+            rows = build_batch_rows(payload.csv_content, base_request_payload=payload.base_request)
             preview = build_batch_preview(rows)
-            if preview["invalid_rows"] > 0 and not allow_partial:
+            if preview["invalid_rows"] > 0 and not payload.allow_partial:
                 raise HTTPException(
                     status_code=400,
                     detail={
@@ -192,7 +174,7 @@ def create_batches_router(
             if not valid_rows:
                 raise ValueError("No valid CSV rows to start.")
             batch_id = state_store.create_batch(
-                batch_name=batch_name, total_rows=preview["total_rows"]
+                batch_name=payload.batch_name, total_rows=preview["total_rows"]
             )
             for row in rows:
                 if not row.valid or row.request is None:

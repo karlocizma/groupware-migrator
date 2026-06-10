@@ -12,6 +12,7 @@ from groupware_migrator.engine.preflight import run_preflight
 from groupware_migrator.engine.reporting import build_job_report, build_job_report_csv
 from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.state import SQLiteStateStore
+from groupware_migrator.api.schemas import JobPayload, ResumeJobPayload
 from groupware_migrator.models import MigrationRequest
 
 
@@ -81,17 +82,17 @@ def create_jobs_router(
     router = APIRouter()
 
     @router.post("/jobs/preflight")
-    def preflight_job(payload: dict) -> dict:
+    def preflight_job(payload: JobPayload) -> dict:
         try:
-            request = _migration_request_from_payload(payload)
+            request = _migration_request_from_payload(payload.model_dump())
             return run_preflight(request, state_store=state_store)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/jobs/plan")
-    def plan_job(payload: dict) -> dict:
+    def plan_job(payload: JobPayload) -> dict:
         try:
-            request = _migration_request_from_payload(payload)
+            request = _migration_request_from_payload(payload.model_dump())
             source_connector = create_source_connector(request)
             plan = runner.plan(request=request, source_connector=source_connector)
             return plan.to_dict()
@@ -99,19 +100,18 @@ def create_jobs_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/jobs/run")
-    def run_job(payload: dict) -> dict:
+    def run_job(payload: JobPayload) -> dict:
         try:
-            resume_job_id = payload.get("resume_job_id")
-            request = _migration_request_from_payload(payload)
-            report = runner.run(request=request, resume_job_id=resume_job_id)
+            request = _migration_request_from_payload(payload.model_dump())
+            report = runner.run(request=request, resume_job_id=payload.resume_job_id)
             return report.to_dict()
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/jobs/start")
-    def start_background_job(payload: dict) -> dict:
+    def start_background_job(payload: JobPayload) -> dict:
         try:
-            request = _migration_request_from_payload(payload)
+            request = _migration_request_from_payload(payload.model_dump())
             job_id = background_jobs.start_job(request=request)
             job_row = state_store.get_job(job_id)
             if not job_row:
@@ -121,16 +121,13 @@ def create_jobs_router(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/jobs/resume")
-    def resume_background_job(payload: dict) -> dict:
+    def resume_background_job(payload: ResumeJobPayload) -> dict:
         try:
-            if "job_id" not in payload:
-                raise ValueError("Missing required field: job_id.")
-            job_id = str(payload["job_id"])
-            request = _migration_request_from_payload(payload)
-            background_jobs.resume_job(request=request, job_id=job_id)
-            job_row = state_store.get_job(job_id)
+            request = _migration_request_from_payload(payload.model_dump())
+            background_jobs.resume_job(request=request, job_id=payload.job_id)
+            job_row = state_store.get_job(payload.job_id)
             if not job_row:
-                raise RuntimeError(f"Unable to read resumed job {job_id}.")
+                raise RuntimeError(f"Unable to read resumed job {payload.job_id}.")
             return _job_response(job_row, running=True, include_payload=True)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
