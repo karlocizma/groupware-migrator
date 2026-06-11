@@ -14,6 +14,7 @@ from groupware_migrator.api.auth import (
     require_user,
 )
 from groupware_migrator.api.rate_limit import LoginRateLimiter
+from groupware_migrator.engine.ldap_auth import LDAPAuthBackend, LDAPAuthError
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password, verify_password
 
 _login_limiter = LoginRateLimiter(max_attempts=5, window_seconds=300, lockout_seconds=900)
@@ -68,21 +69,56 @@ def create_auth_router(state_store: SQLiteStateStore) -> APIRouter:
 
         client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
         _login_limiter.check_and_record(client_ip)
+
         user = state_store.get_user_by_email(payload.email)
-        if not user or not verify_password(payload.password, str(user["password_hash"])):
+        _ldap = LDAPAuthBackend()
+
+        if user and user.get("auth_backend", "local") == "ldap":
+            # Existing LDAP user
+            try:
+                ldap_info = _ldap.authenticate(payload.email, payload.password)
+            except LDAPAuthError as exc:
+                raise HTTPException(status_code=503, detail=f"LDAP server unreachable: {exc}") from exc
+            if ldap_info is None:
+                raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+        elif user and user.get("auth_backend", "local") == "local":
+            # Local user — bcrypt path
+            if not verify_password(payload.password, str(user["password_hash"])):
+                raise HTTPException(status_code=401, detail="Invalid email or password.")
+            if not user.get("is_active", 1):
+                raise HTTPException(status_code=403, detail="Account is deactivated.")
+            # TOTP check
+            if user.get("totp_enabled"):
+                if not payload.totp_code:
+                    return {"totp_required": True}
+                totp = pyotp.TOTP(str(user["totp_secret"]))
+                if not totp.verify(payload.totp_code, valid_window=1):
+                    if not state_store.consume_totp_recovery_code(str(user["id"]), payload.totp_code):
+                        raise HTTPException(status_code=401, detail="Invalid TOTP code.")
+
+        elif not user and _ldap.is_configured():
+            # First LDAP login — auto-provision
+            try:
+                ldap_info = _ldap.authenticate(payload.email, payload.password)
+            except LDAPAuthError as exc:
+                raise HTTPException(status_code=503, detail=f"LDAP server unreachable: {exc}") from exc
+            if ldap_info is None:
+                raise HTTPException(status_code=401, detail="Invalid email or password.")
+            default_role = os.environ.get("LDAP_DEFAULT_ROLE", "operator")
+            user_id = state_store.create_user(
+                email=ldap_info["email"],
+                password_hash="!",
+                role=default_role,
+                auth_backend="ldap",
+            )
+            user = state_store.get_user_by_id(user_id)
+
+        else:
             raise HTTPException(status_code=401, detail="Invalid email or password.")
+
         if not user.get("is_active", 1):
             raise HTTPException(status_code=403, detail="Account is deactivated.")
-
-        # TOTP check
-        if user.get("totp_enabled"):
-            if not payload.totp_code:
-                return {"totp_required": True}
-            totp = pyotp.TOTP(str(user["totp_secret"]))
-            if not totp.verify(payload.totp_code, valid_window=1):
-                # Try recovery code
-                if not state_store.consume_totp_recovery_code(str(user["id"]), payload.totp_code):
-                    raise HTTPException(status_code=401, detail="Invalid TOTP code.")
 
         _login_limiter.clear(client_ip)
         role = get_user_role(user)
@@ -174,6 +210,9 @@ def create_auth_router(state_store: SQLiteStateStore) -> APIRouter:
         payload: ChangePasswordPayload,
         current_user: dict = Depends(require_user),
     ) -> dict:
+        _user_row = state_store.get_user_by_id(str(current_user["sub"]))
+        if _user_row and _user_row.get("auth_backend") == "ldap":
+            raise HTTPException(status_code=400, detail="Password change is not available for LDAP accounts.")
         if len(payload.new_password) < 8:
             raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
         user_id = str(current_user["sub"])
@@ -188,6 +227,9 @@ def create_auth_router(state_store: SQLiteStateStore) -> APIRouter:
         """Generate a new TOTP secret and recovery codes (not yet active until confirmed)."""
         import pyotp  # noqa: PLC0415
 
+        _user_row = state_store.get_user_by_id(str(current_user["sub"]))
+        if _user_row and _user_row.get("auth_backend") == "ldap":
+            raise HTTPException(status_code=400, detail="TOTP is not available for LDAP accounts.")
         user_id = str(current_user["sub"])
         email = str(current_user.get("email", "user"))
         secret = pyotp.random_base32()
