@@ -139,8 +139,8 @@ class ConnectionConfig:
 
 def _infer_workload(
     *,
-    source_protocol: SourceProtocol,
-    destination_protocol: DestinationProtocol,
+    source_protocol: SourceProtocol | str,
+    destination_protocol: DestinationProtocol | str,
 ) -> WorkloadType:
     if (
         source_protocol is SourceProtocol.CARDDAV
@@ -158,9 +158,11 @@ def _infer_workload(
 def _validate_workload_protocols(
     *,
     workload: WorkloadType,
-    source_protocol: SourceProtocol,
-    destination_protocol: DestinationProtocol,
+    source_protocol: SourceProtocol | str,
+    destination_protocol: DestinationProtocol | str,
 ) -> None:
+    if source_protocol not in set(SourceProtocol) or destination_protocol not in set(DestinationProtocol):
+        return
     if workload is WorkloadType.MAIL:
         if source_protocol not in {SourceProtocol.IMAP, SourceProtocol.POP3}:
             raise ValueError("Mail workload requires IMAP or POP3 source protocol.")
@@ -197,7 +199,7 @@ def _validate_workload_protocols(
 
 @dataclass(slots=True)
 class SourceEndpoint:
-    protocol: SourceProtocol
+    protocol: SourceProtocol | str
     connection: ConnectionConfig
     include_collections: list[str] | None = None
     provider_id: str | None = None
@@ -212,7 +214,11 @@ class SourceEndpoint:
 
     @classmethod
     def from_dict(cls, payload: dict) -> "SourceEndpoint":
-        protocol = SourceProtocol(str(payload["protocol"]).lower())
+        raw = str(payload["protocol"]).lower()
+        try:
+            protocol: SourceProtocol | str = SourceProtocol(raw)
+        except ValueError:
+            protocol = raw
         if protocol is SourceProtocol.IMAP:
             default_port = 993
         elif protocol is SourceProtocol.POP3:
@@ -240,7 +246,7 @@ class SourceEndpoint:
 
     def to_dict(self, *, redact_password: bool = False) -> dict:
         return {
-            "protocol": self.protocol.value,
+            "protocol": str(self.protocol),
             "connection": self.connection.to_dict(redact_password=redact_password),
             "include_collections": self.include_collections,
             "include_mailboxes": self.include_collections,
@@ -250,7 +256,7 @@ class SourceEndpoint:
 
 @dataclass(slots=True)
 class DestinationEndpoint:
-    protocol: DestinationProtocol
+    protocol: DestinationProtocol | str
     connection: ConnectionConfig
     root_collection: str = "Migrated"
     provider_id: str | None = None
@@ -265,7 +271,11 @@ class DestinationEndpoint:
 
     @classmethod
     def from_dict(cls, payload: dict) -> "DestinationEndpoint":
-        protocol = DestinationProtocol(str(payload["protocol"]).lower())
+        raw = str(payload["protocol"]).lower()
+        try:
+            protocol: DestinationProtocol | str = DestinationProtocol(raw)
+        except ValueError:
+            protocol = raw
         default_port = 993 if protocol is DestinationProtocol.IMAP else 443
         connection = ConnectionConfig.from_dict(
             payload=payload["connection"],
@@ -282,7 +292,7 @@ class DestinationEndpoint:
 
     def to_dict(self, *, redact_password: bool = False) -> dict:
         return {
-            "protocol": self.protocol.value,
+            "protocol": str(self.protocol),
             "connection": self.connection.to_dict(redact_password=redact_password),
             "root_collection": self.root_collection,
             "root_mailbox": self.root_collection,

@@ -130,3 +130,74 @@ class TestSDKPublicAPI(unittest.TestCase):
     def test_sdk_exports_mailbox_snapshot(self):
         from groupware_migrator.sdk import MailboxSnapshot
         self.assertIsNotNone(MailboxSnapshot)
+
+
+from groupware_migrator.models.domain import (
+    DestinationEndpoint,
+    DestinationProtocol,
+    MigrationOptions,
+    MigrationRequest,
+    SourceEndpoint,
+    SourceProtocol,
+    WorkloadType,
+)
+
+
+# ---------------------------------------------------------------------------
+# TestDomainModelChanges
+# ---------------------------------------------------------------------------
+
+def _src_payload(protocol: str) -> dict:
+    return {
+        "protocol": protocol,
+        "connection": {"host": "h.example.com", "port": 443, "username": "u", "password": "p"},
+    }
+
+
+def _dst_payload(protocol: str) -> dict:
+    return {
+        "protocol": protocol,
+        "connection": {"host": "h.example.com", "port": 443, "username": "u", "password": "p"},
+    }
+
+
+class TestDomainModelChanges(unittest.TestCase):
+    def test_source_endpoint_parses_builtin_protocol(self):
+        ep = SourceEndpoint.from_dict(_src_payload("imap"))
+        self.assertIs(ep.protocol, SourceProtocol.IMAP)
+
+    def test_source_endpoint_accepts_plugin_protocol_string(self):
+        ep = SourceEndpoint.from_dict(_src_payload("ews"))
+        self.assertEqual(ep.protocol, "ews")
+        self.assertNotIsInstance(ep.protocol, SourceProtocol)
+
+    def test_destination_endpoint_accepts_plugin_protocol_string(self):
+        ep = DestinationEndpoint.from_dict(_dst_payload("graph"))
+        self.assertEqual(ep.protocol, "graph")
+        self.assertNotIsInstance(ep.protocol, DestinationProtocol)
+
+    def test_to_dict_works_for_builtin_protocol(self):
+        ep = SourceEndpoint.from_dict(_src_payload("imap"))
+        d = ep.to_dict()
+        self.assertEqual(d["protocol"], "imap")
+
+    def test_to_dict_works_for_plugin_protocol(self):
+        ep = SourceEndpoint.from_dict(_src_payload("ews"))
+        d = ep.to_dict()
+        self.assertEqual(d["protocol"], "ews")
+
+    def test_workload_validation_skipped_for_plugin_protocols(self):
+        req = MigrationRequest.from_dict({
+            "source": _src_payload("ews"),
+            "destination": _dst_payload("ews"),
+            "workload": "mail",
+        })
+        self.assertEqual(req.workload, WorkloadType.MAIL)
+
+    def test_workload_validation_still_runs_for_builtin_protocols(self):
+        with self.assertRaises(ValueError):
+            MigrationRequest.from_dict({
+                "source": _src_payload("caldav"),
+                "destination": _dst_payload("imap"),
+                "workload": "mail",
+            })
