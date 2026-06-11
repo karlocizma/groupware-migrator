@@ -161,6 +161,7 @@
         <div class="foundation-item">Form state persistence · Mobile responsive UI</div>
         <div class="foundation-item">Provider presets (Gmail, M365, Yahoo, Zoho)</div>
         <div class="foundation-item">HTML email notifications (SMTP, per-user opt-in)</div>
+        <div class="foundation-item">LDAP / Active Directory bind with auto-provisioning</div>
       </div>
     </div>
 
@@ -601,8 +602,8 @@
             <div class="feature">
               <div class="feature-icon">📁</div>
               <div class="feature-content">
-                <div class="feature-name">LDAP / Active Directory bind <span class="tag could">could</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred)</span></div>
-                <div class="feature-detail">Bind LDAP for credential validation. Group membership maps to roles. Needs live LDAP server and schema decisions.</div>
+                <div class="feature-name">LDAP / Active Directory bind <span class="tag shipped">shipped</span></div>
+                <div class="feature-detail">Bind LDAP for credential validation. Auto-provisions users on first login. Coexists with built-in password auth; set <code>LDAP_HOST</code> to enable.</div>
               </div>
             </div>
           </div>
@@ -705,7 +706,6 @@
       <p style="font-size:0.88rem;color:#8892a4;margin-bottom:14px">These were planned but require external services or a separate integration phase.</p>
       <div class="defer-list">
         <div class="defer-item"><strong>SAML 2.0 / OIDC SSO</strong> — Infrastructure exists; waiting on IdP selection (Okta, Auth0, Keycloak).</div>
-        <div class="defer-item"><strong>LDAP / Active Directory bind</strong> — Needs a live LDAP server and org-specific schema decisions.</div>
         <div class="defer-item"><strong>Plugin / connector SDK</strong> — Base classes are ready; packaging and docs story missing.</div>
         <div class="defer-item"><strong>Prometheus metrics endpoint</strong> — Useful for production monitoring; straightforward to add when needed.</div>
       </div>

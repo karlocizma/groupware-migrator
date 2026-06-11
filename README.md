@@ -57,6 +57,16 @@ ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=changeme ./start.sh
 | `SMTP_TLS` | `starttls` | TLS mode: `starttls` \| `ssl` \| `none` |
 | `SMTP_TIMEOUT` | `10` | Seconds before SMTP connection timeout |
 | `SITE_URL` | — | Base URL used in email "View job" links (e.g. `https://migrate.example.com`) |
+| `LDAP_HOST` | — | Hostname of the LDAP/AD server. LDAP auth is disabled when absent. |
+| `LDAP_PORT` | `389` (`636` if SSL) | LDAP port |
+| `LDAP_USE_SSL` | `false` | Use LDAPS (full TLS from connection start) |
+| `LDAP_USE_STARTTLS` | `false` | Upgrade plain connection with STARTTLS |
+| `LDAP_BIND_DN` | — | Service account DN for user search, e.g. `CN=svc,OU=SvcAccts,DC=corp,DC=example` |
+| `LDAP_BIND_PASSWORD` | — | Service account password |
+| `LDAP_BASE_DN` | — | Search base, e.g. `OU=Users,DC=corp,DC=example` |
+| `LDAP_USER_FILTER` | `(userPrincipalName={email})` | LDAP search filter; `{email}` is substituted at login |
+| `LDAP_EMAIL_ATTR` | `mail` | Attribute to read user's email from |
+| `LDAP_DEFAULT_ROLE` | `operator` | Role assigned to auto-provisioned LDAP users |
 
 ## CLI usage
 
@@ -116,6 +126,7 @@ All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bea
 | `GET` | `/auth/notifications` | Get your email notification preferences |
 | `PATCH` | `/auth/notifications` | Update your email notification preferences |
 | `POST` | `/api/admin/smtp/test` | Send a test email to verify SMTP config (admin only) |
+| `GET` | `/api/admin/ldap/status` | Check whether LDAP is configured (admin only) |
 
 ### Jobs
 
@@ -289,4 +300,5 @@ All persistence goes through `SQLiteStateStore`. Key tables:
 - `tasks` and `notes` workloads are modeled but not executed.
 - Job snapshots store credentials redacted; scheduled jobs store the full request (Fernet-encrypted if `VAULT_KEY` is set).
 - The `data/state.db` file is created automatically on first startup.
-- SAML/OIDC SSO and LDAP bind are not implemented — these require an external IdP and are left for a future integration phase.
+- SAML/OIDC SSO is not implemented — this requires an external IdP (Okta, Auth0, Keycloak) and is left for a future integration phase.
+- LDAP / Active Directory bind is implemented; set `LDAP_HOST` to enable it alongside the built-in password auth.
