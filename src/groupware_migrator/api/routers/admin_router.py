@@ -132,12 +132,21 @@ def create_admin_router(
 
     @router.get("/backup/download")
     def backup_download(_admin: dict = Depends(require_admin)) -> FileResponse:
-        """Download the SQLite database file (WAL-checkpointed for consistency)."""
+        """Download the SQLite database file (WAL-checkpointed for consistency).
+
+        Not available for PostgreSQL backends — use pg_dump instead.
+        """
+        try:
+            db_path = state_store.db_path
+        except NotImplementedError:
+            raise HTTPException(
+                status_code=501,
+                detail="SQLite file download is not available for the PostgreSQL backend. Use pg_dump.",
+            )
         try:
             state_store.checkpoint_wal()
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"WAL checkpoint failed: {exc}") from exc
-        db_path = state_store.db_path
         if not db_path.exists():
             raise HTTPException(status_code=404, detail="Database file not found.")
         filename = f"groupware-migrator-backup-{_utcnow_filename()}.db"

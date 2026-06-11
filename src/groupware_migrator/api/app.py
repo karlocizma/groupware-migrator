@@ -23,6 +23,7 @@ from groupware_migrator.api.routers.webhooks_router import create_webhooks_route
 from groupware_migrator.engine.background import BackgroundJobManager
 from groupware_migrator.engine.ldap_auth import LDAPAuthBackend
 from groupware_migrator.engine.mailer import MailDeliveryManager
+from groupware_migrator.engine.postgres_state import create_state_store
 from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.scheduler import SchedulerThread
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
@@ -72,7 +73,7 @@ def _bootstrap_admin(state_store: SQLiteStateStore) -> None:
 def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     _configure_logging()
 
-    state_store = SQLiteStateStore(Path(state_db_path))
+    state_store = create_state_store(state_db_path=state_db_path)
     runner = MigrationRunner(state_store=state_store)
     webhook_manager = WebhookDeliveryManager(state_store)
     mail_manager = MailDeliveryManager(state_store)

@@ -24,6 +24,9 @@ dev = [
   "ruff>=0.4",
   "httpx2"
 ]
+postgres = [
+  "psycopg2-binary>=2.9"
+]
 
 [project.scripts]
 groupware-migrator = "groupware_migrator.cli:main"
