@@ -11,8 +11,11 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from groupware_migrator.api.app import create_app
+from groupware_migrator.engine.background import BackgroundJobManager
 from groupware_migrator.engine.mailer import MailDeliveryManager
+from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
+from groupware_migrator.models import JobStatus, MigrationPlan
 
 
 def _store(tmp: str) -> SQLiteStateStore:
@@ -316,3 +319,48 @@ class TestSmtpTestEndpoint(unittest.TestCase):
                 resp = self.client.post("/api/admin/smtp/test")
         self.assertEqual(resp.status_code, 502)
         self.assertIn("SMTP error", resp.json()["detail"])
+
+
+class TestBackgroundJobManagerMailWiring(unittest.TestCase):
+    def test_accepts_mail_manager_param(self):
+        with TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            runner = MigrationRunner(state_store=store)
+            mail_mgr = MailDeliveryManager(store)
+            mgr = BackgroundJobManager(
+                state_store=store,
+                runner=runner,
+                mail_manager=mail_mgr,
+            )
+            self.assertIs(mgr._mail_manager, mail_mgr)
+
+    def test_mail_manager_defaults_to_none(self):
+        with TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            runner = MigrationRunner(state_store=store)
+            mgr = BackgroundJobManager(state_store=store, runner=runner)
+            self.assertIsNone(mgr._mail_manager)
+
+    def test_on_done_calls_fire(self):
+        import concurrent.futures
+        with TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            user_id = _user(store)
+            runner = MigrationRunner(state_store=store)
+            mail_mgr = MailDeliveryManager(store)
+
+            fired = []
+            mail_mgr.fire = lambda **kw: fired.append(kw["event_type"])  # type: ignore[method-assign]
+
+            mgr = BackgroundJobManager(state_store=store, runner=runner, mail_manager=mail_mgr)
+
+            request = _make_request()
+            job_id = store.create_job(request=request, plan=MigrationPlan(), user_id=user_id)
+            store.set_job_status(job_id, JobStatus.COMPLETED)
+
+            mgr._job_contexts[job_id] = (request, 0)
+            f = concurrent.futures.Future()
+            f.set_result(None)
+            mgr._on_done(job_id, f)
+
+            self.assertIn("job.completed", fired)

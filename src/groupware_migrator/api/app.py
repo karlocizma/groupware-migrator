@@ -74,7 +74,10 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     webhook_manager = WebhookDeliveryManager(state_store)
     mail_manager = MailDeliveryManager(state_store)
     background_jobs = BackgroundJobManager(
-        state_store=state_store, runner=runner, webhook_manager=webhook_manager
+        state_store=state_store,
+        runner=runner,
+        webhook_manager=webhook_manager,
+        mail_manager=mail_manager,
     )
     scheduler = SchedulerThread(state_store=state_store, job_manager=background_jobs)
     jwt_secret = _get_jwt_secret()
