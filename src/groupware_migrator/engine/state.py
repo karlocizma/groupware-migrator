@@ -1791,3 +1791,65 @@ class SQLiteStateStore:
                 "DELETE FROM oidc_providers WHERE id = ?", (provider_id,)
             )
             return cursor.rowcount > 0
+
+    # ------------------------------------------------------------------
+    # Backup / export
+    # ------------------------------------------------------------------
+
+    @property
+    def db_path(self) -> Path:
+        return self._db_path
+
+    def checkpoint_wal(self) -> None:
+        """Force a WAL checkpoint so the .db file is up-to-date for backup."""
+        with self._lock, self._connection() as connection:
+            connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    def export_state(self) -> dict[str, Any]:
+        """Export all non-sensitive state as a JSON-serializable dict."""
+        with self._lock, self._connection() as connection:
+            jobs = [dict(r) for r in connection.execute(
+                "SELECT job_id, job_name, status, started_at, finished_at, "
+                "migrated_count, failed_count, skipped_count, last_error, created_at "
+                "FROM jobs ORDER BY created_at"
+            ).fetchall()]
+            batches = [dict(r) for r in connection.execute(
+                "SELECT batch_id, batch_name, total_rows, created_at "
+                "FROM batches ORDER BY created_at"
+            ).fetchall()]
+            schedules = [dict(r) for r in connection.execute(
+                "SELECT id, name, schedule_type, schedule_expr, next_run_at, "
+                "is_active, created_at "
+                "FROM scheduled_jobs ORDER BY created_at"
+            ).fetchall()]
+            webhooks = [dict(r) for r in connection.execute(
+                "SELECT id, label, url, events_json, is_active, created_at "
+                "FROM webhooks ORDER BY created_at"
+            ).fetchall()]
+            orgs = [dict(r) for r in connection.execute(
+                "SELECT id, name, slug, created_at FROM organizations ORDER BY created_at"
+            ).fetchall()]
+            users = [dict(r) for r in connection.execute(
+                "SELECT id, email, is_admin, role, auth_backend, is_active, created_at "
+                "FROM users ORDER BY created_at"
+            ).fetchall()]
+            oidc_providers = [dict(r) for r in connection.execute(
+                "SELECT id, name, client_id, issuer, scope, created_at "
+                "FROM oidc_providers ORDER BY created_at"
+            ).fetchall()]
+            audit = [dict(r) for r in connection.execute(
+                "SELECT id, admin_id, action, target_id, created_at "
+                "FROM admin_audit_events ORDER BY created_at LIMIT 10000"
+            ).fetchall()]
+        return {
+            "schema_version": 1,
+            "exported_at": _utcnow_iso(),
+            "jobs": jobs,
+            "batches": batches,
+            "schedules": schedules,
+            "webhooks": webhooks,
+            "organizations": orgs,
+            "users": users,
+            "oidc_providers": oidc_providers,
+            "audit_events": audit,
+        }

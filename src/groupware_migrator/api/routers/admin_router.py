@@ -4,6 +4,7 @@ import os
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from groupware_migrator.api.auth import require_admin
@@ -129,4 +130,37 @@ def create_admin_router(
     def list_plugins(_admin: dict = Depends(require_admin)) -> list:
         return get_registry().list_plugins()
 
+    @router.get("/backup/download")
+    def backup_download(_admin: dict = Depends(require_admin)) -> FileResponse:
+        """Download the SQLite database file (WAL-checkpointed for consistency)."""
+        try:
+            state_store.checkpoint_wal()
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"WAL checkpoint failed: {exc}") from exc
+        db_path = state_store.db_path
+        if not db_path.exists():
+            raise HTTPException(status_code=404, detail="Database file not found.")
+        filename = f"groupware-migrator-backup-{_utcnow_filename()}.db"
+        return FileResponse(
+            path=str(db_path),
+            media_type="application/octet-stream",
+            filename=filename,
+        )
+
+    @router.get("/export")
+    def export_state(_admin: dict = Depends(require_admin)) -> JSONResponse:
+        """Export all non-sensitive state as a JSON archive."""
+        data = state_store.export_state()
+        return JSONResponse(
+            content=data,
+            headers={
+                "Content-Disposition": f'attachment; filename="groupware-migrator-export-{_utcnow_filename()}.json"'
+            },
+        )
+
     return router
+
+
+def _utcnow_filename() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
