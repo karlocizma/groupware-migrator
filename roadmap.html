@@ -135,15 +135,15 @@
       <p>Seven phases shipped. Five more planned. This document captures what was built, the architectural decisions made along the way, and the full roadmap to complete groupware migration coverage.</p>
       <div class="meta">
         <div class="badge">As of <strong>June 2026</strong></div>
-        <div class="badge green">Phases 1–7 <strong>complete</strong></div>
-        <div class="badge">Phases 8–12 <strong>planned</strong></div>
-        <div class="badge">235 tests · all green</div>
+        <div class="badge green">Phases 1–11 <strong>complete</strong></div>
+        <div class="badge">Phase 12 <strong>planned</strong></div>
+        <div class="badge">323 tests · all green</div>
       </div>
     </header>
 
     <!-- What's shipped -->
     <div class="foundation">
-      <h2>Phases 1–7 Complete — What's Shipped</h2>
+      <h2>Phases 1–11 Complete — What's Shipped</h2>
       <div class="foundation-grid">
         <div class="foundation-item">IMAP / POP3 / CalDAV / CardDAV connectors</div>
         <div class="foundation-item">Background jobs + crash recovery</div>
@@ -171,6 +171,11 @@
         <div class="foundation-item">HTML email notifications (SMTP, per-user opt-in)</div>
         <div class="foundation-item">LDAP / Active Directory bind with auto-provisioning</div>
         <div class="foundation-item">Plugin / connector SDK — third-party connectors via entry points</div>
+        <div class="foundation-item">Tasks (VTODO) and Notes (VJOURNAL) workloads over CalDAV</div>
+        <div class="foundation-item">Prometheus <code>GET /metrics</code> · enriched <code>/health/ready</code></div>
+        <div class="foundation-item">OIDC SSO — Keycloak, Okta, Auth0, Entra ID, Google Workspace</div>
+        <div class="foundation-item">MS Graph source connector — Exchange Online mail migration (OAuth2)</div>
+        <div class="foundation-item">Nextcloud + Exchange Online provider presets</div>
       </div>
     </div>
 
@@ -667,15 +672,15 @@
 
     <div class="section-spacer"></div>
 
-    <!-- ═══════════════════════════════ PLANNED PHASES ═══════════════════════════════ -->
+    <!-- ═══════════════════════════════ COMPLETED PHASES (8–11) ═══════════════════════════════ -->
 
     <!-- Phase 8 -->
     <div class="phase">
       <div class="phase-header">
         <div class="phase-number p8">8</div>
         <div class="phase-title">Workload Completion &amp; Provider Coverage</div>
-        <span class="phase-planned">🔜 Planned</span>
-        <div class="phase-effort">~2–3 weeks</div>
+        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
+        <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
         <div class="phase-desc">
@@ -720,8 +725,8 @@
       <div class="phase-header">
         <div class="phase-number p9">9</div>
         <div class="phase-title">Enterprise Protocol Connectors</div>
-        <span class="phase-planned">🔜 Planned</span>
-        <div class="phase-effort">~4–6 weeks</div>
+        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
+        <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
         <div class="phase-desc">
@@ -768,8 +773,8 @@
       <div class="phase-header">
         <div class="phase-number p10">10</div>
         <div class="phase-title">Observability &amp; Metrics</div>
-        <span class="phase-planned">🔜 Planned</span>
-        <div class="phase-effort">~1–2 weeks</div>
+        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
+        <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
         <div class="phase-desc">
@@ -809,7 +814,7 @@
       <div class="phase-header">
         <div class="phase-number p11">11</div>
         <div class="phase-title">SSO &amp; Enterprise Authentication</div>
-        <span class="phase-planned">🔜 Planned</span>
+        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
         <div class="phase-effort">~3–4 weeks</div>
       </div>
       <div class="phase-body">

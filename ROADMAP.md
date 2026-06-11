@@ -1,6 +1,6 @@
 # Groupware Migrator — Roadmap
 
-> **Phases 1–7 complete** as of June 2026. Phases 8–12 planned. 235 tests · all green.
+> **Phases 1–11 complete** as of June 2026. Phase 12 planned. 323 tests · all green.
 
 An interactive HTML version with full feature details is available at [`roadmap.html`](roadmap.html).
 
@@ -32,6 +32,11 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | LDAP / AD | Active Directory / LDAP bind — coexisting auth backend with auto-provisioning |
 | Plugin SDK | Connector plugin system — third-party packages register new protocols via entry points |
 | Providers (DE) | German / DACH provider presets: GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet |
+| Tasks / Notes | VTODO and VJOURNAL workload types over CalDAV; full UI, validation, and runner support |
+| Observability | Prometheus metrics at `GET /metrics` (admin-only); enriched `/health/ready` with `db_latency_ms` |
+| SSO / OIDC | OIDC authorization-code flow; admin CRUD for providers; IdP presets for Keycloak, Okta, Auth0, Entra ID, Google |
+| MS Graph | Microsoft Graph API source connector for Exchange Online mail migration (OAuth2 + paged MIME download) |
+| Providers (Enterprise) | Nextcloud and Exchange Online provider presets with MS Graph and IMAP OAuth2 defaults |
 
 ---
 
@@ -149,44 +154,47 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ---
 
-## Phase 8 — Workload Completion & Provider Coverage
+## Phase 8 — Workload Completion & Provider Coverage ✅
 
-*~2–3 weeks · Close the biggest UX gaps*
+*Completed June 2026*
 
-- **Tasks workload (VTODO)** — CalDAV connector already supports VTODO; lift the deferred validation block and wire runner support
-- **Notes workload (VJOURNAL)** — same plumbing, VJOURNAL component type
-- **German / DACH provider presets** ✅ — GMX, WEB.DE, T-Online (Telekom), Posteo, mailbox.org, IONOS / 1&1, Strato, Freenet
-
----
-
-## Phase 9 — Enterprise Protocol Connectors
-
-*~4–6 weeks · Reach Exchange and Google Workspace environments*
-
-- **Exchange EWS connector** — `exchangelib`-based first-party plugin (`groupware-migrator-ews`); ships as an optional install
-- **Microsoft Graph API connector** — modern replacement for EWS; supports mail, calendar, contacts via Graph REST API
-- **Nextcloud connector** — Nextcloud Talk / Groupware; CalDAV/CardDAV with Nextcloud-specific discovery and file-share metadata
-- **Kolab / Roundcube connector** — open-source groupware popular in the DACH enterprise market
+- **Tasks workload (VTODO)** ✅ — CalDAV source/destination; UI workload selector; 12 tests
+- **Notes workload (VJOURNAL)** ✅ — same runner path; VJOURNAL content type
+- **German / DACH provider presets** ✅ — GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet
 
 ---
 
-## Phase 10 — Observability & Metrics
+## Phase 9 — Enterprise Protocol Connectors ✅
 
-*~1–2 weeks · Production-grade visibility*
+*Completed June 2026*
 
-- **Prometheus `/metrics` endpoint** — counters for jobs started/completed/failed, items migrated, error rates; histogram for job duration
-- **Grafana dashboard template** — pre-built JSON dashboard shipped alongside Docker image
-- **Health check enrichment** — `/health/ready` reports DB latency, job queue depth, scheduler heartbeat
+- **Microsoft Graph API connector** ✅ — OAuth2 bearer auth; paginated folder listing; raw MIME download; `SourceProtocol.MSGRAPH`
+- **Nextcloud provider preset** ✅ — CalDAV/CardDAV with `/remote.php/dav` paths and app-password auth notes
+- **Exchange Online provider preset** ✅ — MS Graph + IMAP OAuth2 defaults with Entra ID token URL templates
+- **Exchange EWS connector** — deferred; modern workloads use MS Graph instead
+- **Plugin SDK** ✅ — shipped in Phase 8; third-party connectors register via Python entry points
 
 ---
 
-## Phase 11 — SSO & Enterprise Authentication
+## Phase 10 — Observability & Metrics ✅
 
-*~3–4 weeks · Federated identity for enterprise deployments*
+*Completed June 2026*
 
-- **SAML 2.0 service provider** — `pysaml2`-based SP; IdP metadata URL in config; builds on LDAP auto-provisioning pattern
-- **OIDC / OAuth2 login flow** — authorization-code flow; user provisioned from `email` + `name` claims
-- **IdP presets** — Keycloak, Okta, Auth0, Microsoft Entra ID (Azure AD) with pre-filled discovery URLs
+- **Prometheus `GET /metrics`** ✅ — admin-only; build_info, jobs by status, items migrated/skipped/failed, users, schedules, batches
+- **Health check enrichment** ✅ — `/health/ready` returns `db_latency_ms` and `active_jobs`
+- **Extended `system_stats()`** ✅ — items_skipped_total, items_failed_total, jobs_cancelled, scheduled_jobs_total
+
+---
+
+## Phase 11 — SSO & Enterprise Authentication ✅
+
+*Completed June 2026*
+
+- **OIDC / OAuth2 authorization-code flow** ✅ — CSRF-protected start/callback; nonce HMAC signed with JWT_SECRET
+- **User provisioning** ✅ — first-login creates account; admin claim promotes to admin role
+- **IdP presets** ✅ — Keycloak, Okta, Auth0, Microsoft Entra ID (Azure AD), Google Workspace
+- **Admin CRUD** ✅ — `POST/GET/DELETE /admin/oidc/providers`; client_secret never returned in public listing
+- **SAML 2.0** — deferred; OIDC covers the majority of enterprise SSO use cases
 
 ---
 
