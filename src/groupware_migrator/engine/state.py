@@ -816,6 +816,18 @@ class SQLiteStateStore:
             items_migrated = connection.execute(
                 "SELECT COALESCE(SUM(migrated_count), 0) FROM jobs"
             ).fetchone()[0]
+            items_skipped = connection.execute(
+                "SELECT COALESCE(SUM(skipped_count), 0) FROM jobs"
+            ).fetchone()[0]
+            items_failed = connection.execute(
+                "SELECT COALESCE(SUM(failed_count), 0) FROM jobs"
+            ).fetchone()[0]
+            jobs_cancelled = connection.execute(
+                "SELECT COUNT(*) FROM jobs WHERE status = 'cancelled'"
+            ).fetchone()[0]
+            scheduled_jobs_total = connection.execute(
+                "SELECT COUNT(*) FROM scheduled_jobs"
+            ).fetchone()[0]
             batches_total = connection.execute("SELECT COUNT(*) FROM batches").fetchone()[0]
         return {
             "users_total": int(users_total),
@@ -823,11 +835,15 @@ class SQLiteStateStore:
             "jobs_running": int(jobs_running),
             "jobs_completed": int(jobs_completed),
             "jobs_failed": int(jobs_failed),
+            "jobs_cancelled": int(jobs_cancelled),
             "jobs_last_7d": int(jobs_7d),
             "success_rate_7d_pct": round(completed_7d / jobs_7d * 100) if jobs_7d > 0 else 0,
             "jobs_last_30d": int(jobs_30d),
             "success_rate_30d_pct": round(completed_30d / jobs_30d * 100) if jobs_30d > 0 else 0,
             "items_migrated_total": int(items_migrated),
+            "items_skipped_total": int(items_skipped),
+            "items_failed_total": int(items_failed),
+            "scheduled_jobs_total": int(scheduled_jobs_total),
             "batches_total": int(batches_total),
         }
 

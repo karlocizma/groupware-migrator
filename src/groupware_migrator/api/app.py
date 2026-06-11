@@ -14,6 +14,7 @@ from groupware_migrator.api.routers.admin_router import create_admin_router
 from groupware_migrator.api.routers.auth_router import create_auth_router
 from groupware_migrator.api.routers.batches import create_batches_router
 from groupware_migrator.api.routers.jobs import create_jobs_router
+from groupware_migrator.api.routers.metrics_router import create_metrics_router
 from groupware_migrator.api.routers.orgs_router import create_orgs_router
 from groupware_migrator.api.routers.providers import create_providers_router
 from groupware_migrator.api.routers.scheduler_router import create_scheduler_router
@@ -189,11 +190,17 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
 
     @app.get("/health/ready")
     def health_ready() -> dict:
+        import time
+        t0 = time.monotonic()
         try:
-            state_store.count_users()
+            active_jobs = state_store.system_stats()["jobs_running"]
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"Database not ready: {exc}") from exc
-        return {"status": "ready"}
+        db_latency_ms = round((time.monotonic() - t0) * 1000, 1)
+        return {"status": "ready", "db_latency_ms": db_latency_ms, "active_jobs": active_jobs}
+
+    metrics_router = create_metrics_router(state_store)
+    app.include_router(metrics_router)
 
     # Auth router — public (no auth required)
     auth_router = create_auth_router(state_store)
