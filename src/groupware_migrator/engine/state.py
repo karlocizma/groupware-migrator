@@ -273,6 +273,12 @@ class SQLiteStateStore:
                     joined_at TEXT NOT NULL,
                     PRIMARY KEY (org_id, user_id)
                 );
+                CREATE TABLE IF NOT EXISTS notification_prefs (
+                    user_id      TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    on_completed INTEGER NOT NULL DEFAULT 0,
+                    on_failed    INTEGER NOT NULL DEFAULT 0,
+                    on_cancelled INTEGER NOT NULL DEFAULT 0
+                );
                 """
             )
         # Idempotent migrations
@@ -694,6 +700,42 @@ class SQLiteStateStore:
                 (new_password_hash, user_id),
             )
             return cursor.rowcount > 0
+
+    def get_notification_prefs(self, user_id: str) -> dict[str, bool]:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "SELECT on_completed, on_failed, on_cancelled FROM notification_prefs WHERE user_id = ?",
+                (user_id,),
+            )
+            row = cursor.fetchone()
+        if row is None:
+            return {"on_completed": False, "on_failed": False, "on_cancelled": False}
+        return {
+            "on_completed": bool(row["on_completed"]),
+            "on_failed": bool(row["on_failed"]),
+            "on_cancelled": bool(row["on_cancelled"]),
+        }
+
+    def set_notification_prefs(
+        self,
+        user_id: str,
+        *,
+        on_completed: bool,
+        on_failed: bool,
+        on_cancelled: bool,
+    ) -> None:
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO notification_prefs (user_id, on_completed, on_failed, on_cancelled)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    on_completed = excluded.on_completed,
+                    on_failed    = excluded.on_failed,
+                    on_cancelled = excluded.on_cancelled
+                """,
+                (user_id, 1 if on_completed else 0, 1 if on_failed else 0, 1 if on_cancelled else 0),
+            )
 
     def log_admin_action(
         self,
