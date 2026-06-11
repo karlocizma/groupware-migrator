@@ -280,3 +280,69 @@ class TestFactoryWithPlugin(unittest.TestCase):
         from groupware_migrator.connectors.imap import ImapSourceConnector
         connector = create_source_connector(req)
         self.assertIsInstance(connector, ImapSourceConnector)
+
+
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from fastapi.testclient import TestClient
+
+from groupware_migrator.api.app import create_app
+from groupware_migrator.engine.state import SQLiteStateStore, hash_password
+
+
+def _authed_admin_client(app) -> TestClient:
+    store: SQLiteStateStore = app.state.state_store
+    store.create_user(
+        email="admin@example.com",
+        password_hash=hash_password("adminpass"),
+        is_admin=True,
+    )
+    client = TestClient(app, raise_server_exceptions=True)
+    resp = client.post("/auth/login", json={"email": "admin@example.com", "password": "adminpass"})
+    assert resp.status_code == 200, resp.text
+    return client
+
+
+# ---------------------------------------------------------------------------
+# TestAdminPluginsEndpoint
+# ---------------------------------------------------------------------------
+
+class TestAdminPluginsEndpoint(unittest.TestCase):
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        db = str(Path(self._tmp.name) / "state.db")
+        self.app = create_app(state_db_path=db)
+        self.client = _authed_admin_client(self.app)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_returns_empty_list_when_no_plugins(self):
+        reg = PluginRegistry()
+        with patch("groupware_migrator.api.routers.admin_router.get_registry", return_value=reg):
+            resp = self.client.get("/api/admin/plugins")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+
+    def test_returns_plugin_metadata(self):
+        reg = PluginRegistry()
+        reg._meta = [{
+            "name": "my-plugin",
+            "version": "1.2.3",
+            "source_protocols": ["fake_proto"],
+            "destination_protocols": [],
+        }]
+        with patch("groupware_migrator.api.routers.admin_router.get_registry", return_value=reg):
+            resp = self.client.get("/api/admin/plugins")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["name"], "my-plugin")
+        self.assertEqual(data[0]["version"], "1.2.3")
+        self.assertEqual(data[0]["source_protocols"], ["fake_proto"])
+
+    def test_requires_admin(self):
+        client = TestClient(self.app)
+        resp = client.get("/api/admin/plugins")
+        self.assertEqual(resp.status_code, 401)

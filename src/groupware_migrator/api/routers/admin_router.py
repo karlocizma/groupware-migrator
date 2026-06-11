@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from groupware_migrator.api.auth import require_admin
+from groupware_migrator.engine.plugin_registry import get_registry
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
 
 if TYPE_CHECKING:
@@ -123,5 +124,9 @@ def create_admin_router(
     def ldap_status(_admin: dict = Depends(require_admin)) -> dict:
         host = os.environ.get("LDAP_HOST", "")
         return {"configured": bool(host), "host": host or None}
+
+    @router.get("/plugins")
+    def list_plugins(_admin: dict = Depends(require_admin)) -> list:
+        return get_registry().list_plugins()
 
     return router
