@@ -1,0 +1,12 @@
+{"type":"server-started","port":57097,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:57097","screen_dir":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content","state_dir":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/state"}
+{"type":"screen-added","file":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content/priorities.html"}
+{"source":"user-event","type":"click","text":"A\n    \n      Auth & Multi-tenancy\n      Login system for the web UI, user isolation, API keys, and per-user job scoping. Currently anyone with the URL can see and run all jobs.","choice":"auth","id":null,"timestamp":1781095005540}
+{"source":"user-event","type":"click","text":"C\n    \n      Frontend Quality\n      Split the 1231-line monolithic app.js into ES modules, persist form state across refreshes, loading states on buttons, fix stale hero description, mobile responsiveness.","choice":"frontend","id":null,"timestamp":1781095044766}
+{"type":"screen-added","file":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content/auth-model.html"}
+{"source":"user-event","type":"click","text":"B\n    \n      Multi-user accounts (email + password)\n      Each operator gets their own login. Jobs are scoped per user. Fits a team of migration engineers, or customers who self-serve their own migrations.\n      \n        ProsPer-user audit trailRole-based access possible later\n        Cons1–2 weeks to build properlyPassword reset, session management","choice":"multi-user","id":null,"timestamp":1781095097386}
+{"type":"screen-added","file":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content/waiting-1.html"}
+{"type":"screen-added","file":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content/roadmap-design.html"}
+{"type":"screen-added","file":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content/waiting-2.html"}
+{"type":"screen-added","file":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content/roadmap-preview.html"}
+{"type":"screen-added","file":"/home/karlo/projects/groupware-migrator/.superpowers/brainstorm/19853-1781094905/content/roadmap-full.html"}
+{"type":"server-stopped","reason":"idle timeout"}

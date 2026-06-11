@@ -1,0 +1,39 @@
+<h2>Where should we focus first?</h2>
+<p class="subtitle">Select the area that feels most urgent for your product direction. You can pick multiple.</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="auth" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Auth &amp; Multi-tenancy</h3>
+      <p>Login system for the web UI, user isolation, API keys, and per-user job scoping. Currently anyone with the URL can see and run all jobs.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="backend" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Backend Reliability</h3>
+      <p>Crash recovery for in-flight jobs, structured logging, Pydantic request validation, split the 640-line God-file <code>app.py</code> into routers, fix duplicated code.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="frontend" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Frontend Quality</h3>
+      <p>Split the 1231-line monolithic <code>app.js</code> into ES modules, persist form state across refreshes, loading states on buttons, fix stale hero description, mobile responsiveness.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="deploy" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Deployment &amp; DevOps</h3>
+      <p>Docker image, environment-variable config, CI pipeline (GitHub Actions), OpenAPI schema export, health/readiness endpoints. Currently zero infra tooling.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:2rem">
+  <p class="subtitle" style="font-size:0.85rem">
+    <strong>Also identified but lower urgency:</strong> implement Tasks/Notes workload (already modeled), WebDAV library for CalDAV/CardDAV instead of raw HTTP, webhooks/callbacks on job completion, rate limiting on batch preflight, adaptive SSE instead of 1.5s polling.
+  </p>
+</div>

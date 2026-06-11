@@ -1,0 +1,144 @@
+<h2>Groupware Migrator — Product Roadmap Design</h2>
+<p class="subtitle">Option 1: Foundation → Auth → Frontend. Three phases + backlog. Review each section and let me know in the terminal if anything needs adjusting.</p>
+
+<div class="section">
+  <span class="label">Phase 1 · ~2 weeks · Backend Foundation</span>
+  <h3>Clean the engine room before adding features</h3>
+  <div class="cards">
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🔧 Split <code>app.py</code> into routers</h3>
+        <p>640-line God-file → <code>routers/jobs.py</code>, <code>routers/batches.py</code>, <code>routers/providers.py</code>. Each router owns its domain. Prerequisite for adding auth middleware cleanly.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>✅ Pydantic request models</h3>
+        <p>Replace raw <code>dict</code> payloads on all endpoints with typed Pydantic models. FastAPI will auto-validate, auto-document, and surface errors before they reach engine code.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>💥 Crash recovery</h3>
+        <p>On startup, any job with status <code>running</code> gets marked <code>failed</code>. Currently these jobs hang forever after a server restart — silent data loss for a product.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🪵 Structured logging</h3>
+        <p>Add Python <code>logging</code> throughout engine and connectors. Configurable log level via env var. Essential for debugging production migrations.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🧹 Remove duplicate code</h3>
+        <p><code>_batch_status_from_counts</code> is copy-pasted verbatim in both <code>app.py</code> and <code>state.py</code>. Consolidate in <code>state.py</code>, remove from app layer.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>⚡ Fix deprecated lifecycle hook</h3>
+        <p><code>@app.on_event("shutdown")</code> is deprecated in modern FastAPI. Replace with <code>@asynccontextmanager</code> lifespan function.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:2rem">
+  <span class="label">Phase 2 · ~2–3 weeks · Auth &amp; Multi-tenancy</span>
+  <h3>Make it a real product with user isolation</h3>
+  <div class="cards">
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>👤 User model</h3>
+        <p>New <code>users</code> table: <code>id</code>, <code>email</code>, <code>password_hash</code>, <code>is_admin</code>, <code>created_at</code>. Bcrypt hashing. First user bootstrapped from env var or first-run setup page.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🔐 Session management</h3>
+        <p>JWT tokens in <code>HttpOnly</code> cookies. Login/logout endpoints. Auth middleware that protects all <code>/api/*</code> routes. Public routes: <code>/health</code>, <code>/login</code>.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🏠 Per-user job scoping</h3>
+        <p>Add <code>user_id</code> FK to <code>jobs</code> and <code>batches</code> tables. All list/get/stream endpoints filter by the authenticated user. Admins can see all jobs.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🖥️ Login UI</h3>
+        <p>Minimal <code>/login</code> page. On auth success, redirect to dashboard. On session expiry, redirect back to login. No frameworks — matches the existing vanilla JS style.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🔑 API key support</h3>
+        <p>Optional: generate per-user API keys for programmatic access (CLI, scripts). Bearer token auth alongside cookie sessions. Admin UI for key revocation.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:2rem">
+  <span class="label">Phase 3 · ~1–2 weeks · Frontend Quality</span>
+  <h3>A product-grade UI that doesn't lose your work</h3>
+  <div class="cards">
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>📦 ES modules</h3>
+        <p>Split 1231-line <code>app.js</code> into focused modules: <code>api.js</code>, <code>form.js</code>, <code>jobs.js</code>, <code>batches.js</code>, <code>streams.js</code>. No bundler needed — native browser modules.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>💾 Form state persistence</h3>
+        <p>Save host/port/username/workload/protocol/provider fields to <code>localStorage</code> on change. Restore on page load. Passwords intentionally excluded.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>⏳ Loading states</h3>
+        <p>Disable action buttons and show a spinner during API calls. Prevents double-submissions. Currently nothing stops you clicking "Start Background Job" twice.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>📱 Mobile responsiveness</h3>
+        <p>The two-column layout breaks below ~900px. Add responsive breakpoints so the form stacks cleanly on tablet/mobile — important if customers use it themselves.</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>📝 Copy/description fixes</h3>
+        <p>Hero still says "IMAP/POP3 migration to IMAP" — update to reflect CalDAV/CardDAV support. Small thing, big first impression.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:2rem">
+  <span class="label">Backlog · Future releases</span>
+  <h3>Valuable but not blocking the product</h3>
+  <ul style="column-count:2; column-gap:2rem; line-height:2">
+    <li>Docker image + <code>docker-compose.yml</code></li>
+    <li>GitHub Actions CI (lint + tests)</li>
+    <li>OpenAPI schema export &amp; versioning</li>
+    <li>Adaptive SSE (back off when idle)</li>
+    <li>Tasks / Notes workload</li>
+    <li>WebDAV library for CalDAV/CardDAV</li>
+    <li>Webhooks on job completion</li>
+    <li>Rate limiting on batch preflight</li>
+    <li>Role-based access (admin / operator / viewer)</li>
+    <li>Password reset flow</li>
+  </ul>
+</div>
+
+<div class="section" style="margin-top:1.5rem; padding:1rem; background:rgba(255,255,255,0.05); border-radius:8px;">
+  <p style="margin:0; font-size:0.9rem; opacity:0.8">
+    <strong>Total estimated effort:</strong> ~6–7 weeks for Phases 1–3 (solo developer). Phase 1 is the prerequisite for everything else — don't skip it.
+    <br><br>
+    Review this in the browser and let me know in the terminal if anything looks wrong, is missing, or should be reprioritized. Once you approve I'll write the spec and build the HTML tracker file.
+  </p>
+</div>

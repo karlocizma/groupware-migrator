@@ -1,0 +1,38 @@
+<h2>What auth model fits your product?</h2>
+<p class="subtitle">This determines architecture complexity and how much of the roadmap is auth-related work.</p>
+
+<div class="options">
+  <div class="option" data-choice="single-admin" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Single admin password</h3>
+      <p>One shared secret (env var) gates the entire UI. Simple, fast to build. Good if <em>you</em> operate migrations for customers — customers never log in themselves.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pros</h4><ul><li>1–2 days to implement</li><li>No DB schema changes</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No per-user audit trail</li><li>Shared secret = no revocation</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="multi-user" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Multi-user accounts (email + password)</h3>
+      <p>Each operator gets their own login. Jobs are scoped per user. Fits a team of migration engineers, or customers who self-serve their own migrations.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pros</h4><ul><li>Per-user audit trail</li><li>Role-based access possible later</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>1–2 weeks to build properly</li><li>Password reset, session management</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="sso" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>SSO / OAuth login (Google, Microsoft…)</h3>
+      <p>Customers log in with their existing identity provider. Zero password management on your side. Best for enterprise-facing products.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pros</h4><ul><li>No credential storage risk</li><li>Enterprise-ready from day one</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>3–4 weeks + IdP setup</li><li>Overkill if you operate for customers</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
