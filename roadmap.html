@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Groupware Migrator — Product Roadmap</title>
+  <title>Groupware Migrator — Roadmap</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17,461 +17,717 @@
       --green: #34d399;
       --yellow: #fbbf24;
       --red: #f87171;
+      --orange: #fb923c;
+      --cyan: #22d3ee;
       --text: #e2e8f0;
       --muted: #8892a4;
       --radius: 12px;
     }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 15px;
-      line-height: 1.6;
-      min-height: 100vh;
-    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.6; min-height: 100vh; }
 
-    /* Orbs */
-    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.25; }
-    .orb-a { width: 600px; height: 600px; background: #3b4ff0; top: -200px; left: -150px; }
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.2; }
+    .orb-a { width: 700px; height: 700px; background: #3b4ff0; top: -250px; left: -200px; }
     .orb-b { width: 500px; height: 500px; background: #7c3aed; bottom: -100px; right: -100px; }
+    .orb-c { width: 400px; height: 400px; background: #0891b2; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 
-    .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
+    .container { position: relative; z-index: 1; max-width: 940px; margin: 0 auto; padding: 48px 24px 100px; }
 
-    /* Header */
     header { margin-bottom: 48px; }
-    header h1 { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, #fff 30%, var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    header p { color: var(--muted); margin-top: 8px; font-size: 0.95rem; }
-    .meta { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
-    .badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; color: var(--muted); }
+    header h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #fff 30%, var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    header p { color: var(--muted); margin-top: 10px; font-size: 1rem; max-width: 680px; }
+    .meta { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+    .badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; color: var(--muted); }
     .badge strong { color: var(--text); }
+    .badge.green { background: rgba(52,211,153,0.15); color: #34d399; border-color: rgba(52,211,153,0.3); }
 
-    /* Overall progress */
-    .overall-progress { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 40px; }
-    .overall-progress h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
-    .progress-bar-wrap { background: rgba(255,255,255,0.06); border-radius: 100px; height: 8px; overflow: hidden; }
-    .progress-bar-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.4s ease; }
-    .progress-label { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.82rem; color: var(--muted); }
-    .progress-label span:last-child { font-weight: 600; color: var(--text); }
+    /* Foundation summary */
+    .foundation { background: var(--surface); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 48px; }
+    .foundation h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 14px; }
+    .foundation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .foundation-item { display: flex; align-items: center; gap: 8px; font-size: 0.87rem; color: #c8d5ff; }
+    .foundation-item::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; }
 
     /* Phase */
-    .phase { margin-bottom: 32px; }
-    .phase-header {
-      display: flex; align-items: center; gap: 12px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius) var(--radius) 0 0;
-      padding: 16px 20px; cursor: pointer; user-select: none;
-      transition: background 0.15s;
-    }
-    .phase-header:hover { background: var(--surface2); }
-    .phase-header.collapsed { border-radius: var(--radius); }
-    .phase-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
-    .phase-1 .phase-num { background: rgba(108,143,255,0.2); color: var(--accent); }
-    .phase-2 .phase-num { background: rgba(167,139,250,0.2); color: var(--accent2); }
-    .phase-3 .phase-num { background: rgba(52,211,153,0.2); color: var(--green); }
-    .phase-backlog .phase-num { background: rgba(136,146,164,0.2); color: var(--muted); }
-    .phase-title { flex: 1; }
-    .phase-title h2 { font-size: 1rem; font-weight: 600; }
-    .phase-title small { color: var(--muted); font-size: 0.8rem; }
-    .phase-progress { font-size: 0.82rem; color: var(--muted); margin-right: 4px; }
-    .phase-chevron { color: var(--muted); font-size: 0.8rem; transition: transform 0.2s; }
-    .phase-header.collapsed .phase-chevron { transform: rotate(-90deg); }
+    .phase { margin-bottom: 36px; }
+    .phase-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .phase-number { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .phase-number.p1 { background: rgba(108,143,255,0.15); border: 1px solid rgba(108,143,255,0.4); color: var(--accent); }
+    .phase-number.p2 { background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.4); color: var(--accent2); }
+    .phase-number.p3 { background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.4); color: var(--green); }
+    .phase-number.p4 { background: rgba(34,211,238,0.15); border: 1px solid rgba(34,211,238,0.4); color: var(--cyan); }
+    .phase-number.p5 { background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.4); color: var(--orange); }
+    .phase-number.p6 { background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.4); color: var(--accent2); }
+    .phase-number.p7 { background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4); color: var(--yellow); }
+    .phase-title { font-size: 1.15rem; font-weight: 600; }
+    .phase-effort { margin-left: auto; font-size: 0.76rem; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+    .phase-shipped { margin-left: 8px; font-size: 0.72rem; font-weight: 700; color: var(--green); background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); padding: 3px 9px; border-radius: 20px; }
 
-    .phase-body { border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius) var(--radius); overflow: hidden; }
-    .phase-body.hidden { display: none; }
+    .phase-body { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 
-    /* Task */
-    .task {
-      display: flex; align-items: flex-start; gap: 14px;
-      padding: 14px 20px; border-bottom: 1px solid var(--border);
-      transition: background 0.1s;
-    }
-    .task:last-child { border-bottom: none; }
-    .task:hover { background: rgba(255,255,255,0.02); }
-    .task.done { opacity: 0.5; }
-    .task.done .task-title { text-decoration: line-through; color: var(--muted); }
+    .phase-desc { padding: 16px 20px; color: var(--muted); font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+    .phase-desc strong { color: var(--text); }
 
-    .task-check {
-      flex-shrink: 0; margin-top: 2px;
-      width: 18px; height: 18px; border-radius: 5px;
-      border: 2px solid var(--border); background: transparent;
-      cursor: pointer; appearance: none; -webkit-appearance: none;
-      position: relative; transition: all 0.15s;
-    }
-    .task-check:checked { background: var(--green); border-color: var(--green); }
-    .task-check:checked::after {
-      content: '✓'; position: absolute; top: -1px; left: 2px;
-      font-size: 11px; color: #0f1117; font-weight: 700;
-    }
-    .task-check:hover:not(:checked) { border-color: var(--accent); }
+    /* Feature groups inside a phase */
+    .feature-group { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .feature-group:last-child { border-bottom: none; }
+    .feature-group-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px; }
 
-    .task-body { flex: 1; }
-    .task-id { font-size: 0.72rem; color: var(--muted); font-family: monospace; margin-bottom: 2px; }
-    .task-title { font-weight: 500; font-size: 0.95rem; }
-    .task-desc { color: var(--muted); font-size: 0.83rem; margin-top: 4px; line-height: 1.5; }
-    .task-tag { display: inline-block; font-size: 0.7rem; padding: 1px 7px; border-radius: 10px; margin-top: 6px; margin-right: 4px; }
-    .tag-refactor { background: rgba(108,143,255,0.15); color: var(--accent); }
-    .tag-reliability { background: rgba(251,191,36,0.15); color: var(--yellow); }
-    .tag-auth { background: rgba(167,139,250,0.15); color: var(--accent2); }
-    .tag-frontend { background: rgba(52,211,153,0.15); color: var(--green); }
-    .tag-security { background: rgba(248,113,113,0.15); color: var(--red); }
-    .tag-ux { background: rgba(52,211,153,0.15); color: var(--green); }
+    .feature-list { display: grid; gap: 8px; }
+    .feature { display: flex; align-items: flex-start; gap: 10px; }
+    .feature-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .feature-name { font-size: 0.9rem; font-weight: 500; }
+    .feature-detail { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
 
-    /* Backlog table */
-    .backlog-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    .backlog-table td { padding: 10px 20px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    .backlog-table tr:last-child td { border-bottom: none; }
-    .backlog-table tr:hover td { background: rgba(255,255,255,0.02); }
-    .backlog-table td:first-child { font-weight: 500; white-space: nowrap; padding-right: 8px; }
-    .backlog-table td:last-child { color: var(--muted); }
+    /* Priority tags */
+    .tag { display: inline-block; border-radius: 6px; padding: 2px 7px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 6px; }
+    .tag.must { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+    .tag.should { background: rgba(251,191,36,0.12); color: #fde68a; border: 1px solid rgba(251,191,36,0.3); }
+    .tag.could { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
 
-    /* Decisions */
-    .decisions { margin-top: 40px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; }
-    .decisions h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px; }
+    /* Architecture decisions */
+    .decisions { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+    .decisions h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px; }
     .decision { display: flex; gap: 12px; margin-bottom: 10px; font-size: 0.88rem; }
     .decision:last-child { margin-bottom: 0; }
     .decision-key { color: var(--accent); font-weight: 600; white-space: nowrap; min-width: 160px; }
     .decision-val { color: var(--muted); }
 
-    footer { text-align: center; margin-top: 56px; font-size: 0.78rem; color: var(--muted); }
+    /* Principles section */
+    .principles { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; }
+    .principles h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 20px; }
+    .principles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .principle-title { font-size: 0.92rem; font-weight: 600; margin-bottom: 4px; }
+    .principle-body { font-size: 0.83rem; color: var(--muted); }
+
+    /* Defer list */
+    .defer-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+    .defer-section h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
+    .defer-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .defer-item { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 0.82rem; color: var(--muted); }
+
+    .section-spacer { margin-top: 48px; }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 1.6rem; }
+      .container { padding: 32px 16px 60px; }
+      .foundation-grid { grid-template-columns: 1fr; }
+      .principles-grid { grid-template-columns: 1fr; }
+      .decision { flex-direction: column; gap: 2px; }
+      .decision-key { min-width: 0; }
+    }
   </style>
 </head>
 <body>
   <div class="orb orb-a"></div>
   <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
 
   <div class="container">
     <header>
-      <h1>Groupware Migrator — Product Roadmap</h1>
-      <p>Full-stack improvement plan toward a production-ready SaaS product.</p>
+      <h1>Groupware Migrator — Roadmap</h1>
+      <p>All seven phases are implemented. This document captures what was built, the architectural decisions made along the way, and what gaps remain for future work.</p>
       <div class="meta">
-        <span class="badge"><strong>Direction:</strong> Product / SaaS</span>
-        <span class="badge"><strong>Sequence:</strong> Foundation → Auth → Frontend</span>
-        <span class="badge"><strong>Auth:</strong> Multi-user email + password</span>
-        <span class="badge"><strong>Created:</strong> 2026-06-10</span>
+        <div class="badge">As of <strong>June 2026</strong></div>
+        <div class="badge green">All 7 phases <strong>complete</strong></div>
+        <div class="badge">159 tests · all green</div>
       </div>
     </header>
 
-    <div class="overall-progress">
-      <h2>Overall Progress</h2>
-      <div class="progress-bar-wrap">
-        <div class="progress-bar-fill" id="overall-bar" style="width:0%"></div>
-      </div>
-      <div class="progress-label">
-        <span id="overall-label">0 of 16 tasks complete</span>
-        <span id="overall-pct">0%</span>
-      </div>
-    </div>
-
-    <!-- PHASE 1 -->
-    <div class="phase phase-1">
-      <div class="phase-header" onclick="togglePhase('phase1')">
-        <div class="phase-num">1</div>
-        <div class="phase-title">
-          <h2>Backend Foundation</h2>
-          <small>~2 weeks · Clean the engine room before adding features</small>
-        </div>
-        <span class="phase-progress" id="phase1-progress">0 / 6</span>
-        <span class="phase-chevron">▾</span>
-      </div>
-      <div class="phase-body" id="phase1">
-        <div class="task" id="task-1-1">
-          <input type="checkbox" class="task-check" data-task="1-1" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">1.1</div>
-            <div class="task-title">Split <code>app.py</code> into FastAPI routers</div>
-            <div class="task-desc">640-line God-file → <code>api/routers/jobs.py</code>, <code>api/routers/batches.py</code>, <code>api/routers/providers.py</code>. <code>create_app()</code> becomes a thin wiring function. Prerequisite for adding auth middleware cleanly.</div>
-            <span class="task-tag tag-refactor">refactor</span>
-          </div>
-        </div>
-        <div class="task" id="task-1-2">
-          <input type="checkbox" class="task-check" data-task="1-2" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">1.2</div>
-            <div class="task-title">Add Pydantic request models</div>
-            <div class="task-desc">Replace raw <code>dict</code> payloads on all POST endpoints with typed Pydantic models (<code>JobRequest</code>, <code>BatchRequest</code>, <code>BatchPreflightRequest</code>). FastAPI auto-validates and auto-documents.</div>
-            <span class="task-tag tag-refactor">refactor</span>
-          </div>
-        </div>
-        <div class="task" id="task-1-3">
-          <input type="checkbox" class="task-check" data-task="1-3" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">1.3</div>
-            <div class="task-title">Crash recovery for in-flight jobs</div>
-            <div class="task-desc">On startup, mark all <code>status = 'running'</code> jobs as <code>failed</code> with a descriptive error. Currently these hang in running state forever after a server crash or restart — silent data loss.</div>
-            <span class="task-tag tag-reliability">reliability</span>
-          </div>
-        </div>
-        <div class="task" id="task-1-4">
-          <input type="checkbox" class="task-check" data-task="1-4" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">1.4</div>
-            <div class="task-title">Add structured logging</div>
-            <div class="task-desc">Python <code>logging</code> module throughout <code>engine/runner.py</code>, <code>engine/preflight.py</code>, and all connectors. <code>LOG_LEVEL</code> env var (default <code>INFO</code>). Replaces bare exception silencing.</div>
-            <span class="task-tag tag-reliability">reliability</span>
-          </div>
-        </div>
-        <div class="task" id="task-1-5">
-          <input type="checkbox" class="task-check" data-task="1-5" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">1.5</div>
-            <div class="task-title">Remove duplicated <code>_batch_status_from_counts</code></div>
-            <div class="task-desc">This function is copy-pasted verbatim in both <code>app.py</code> and <code>state.py</code>. Remove the app-layer copy; import from <code>state.py</code>.</div>
-            <span class="task-tag tag-refactor">refactor</span>
-          </div>
-        </div>
-        <div class="task" id="task-1-6">
-          <input type="checkbox" class="task-check" data-task="1-6" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">1.6</div>
-            <div class="task-title">Fix deprecated FastAPI lifecycle hooks</div>
-            <div class="task-desc">Replace <code>@app.on_event("shutdown")</code> (deprecated since FastAPI 0.93) with an <code>@asynccontextmanager</code> lifespan function. The lifespan also triggers crash recovery (1.3) on startup.</div>
-            <span class="task-tag tag-refactor">refactor</span>
-          </div>
-        </div>
+    <!-- What's shipped -->
+    <div class="foundation">
+      <h2>All Phases Complete — What's Shipped</h2>
+      <div class="foundation-grid">
+        <div class="foundation-item">IMAP / POP3 / CalDAV / CardDAV connectors</div>
+        <div class="foundation-item">Background jobs + crash recovery</div>
+        <div class="foundation-item">CSV batch migration (multi-user waves)</div>
+        <div class="foundation-item">Incremental sync with cursor persistence</div>
+        <div class="foundation-item">Preflight checks (single + batch)</div>
+        <div class="foundation-item">SSE live progress streams</div>
+        <div class="foundation-item">JWT + HttpOnly cookie auth + API keys</div>
+        <div class="foundation-item">Per-user job scoping · RBAC (4 roles)</div>
+        <div class="foundation-item">Rate limiting · Security headers · Health probes</div>
+        <div class="foundation-item">Job cancellation · Retry policy · Graceful drain</div>
+        <div class="foundation-item">SQLite backup / restore CLI</div>
+        <div class="foundation-item">Docker + docker-compose + nginx guide</div>
+        <div class="foundation-item">Admin dashboard (stats, users, audit log, cleanup)</div>
+        <div class="foundation-item">Cron / interval recurring schedules</div>
+        <div class="foundation-item">HMAC-signed webhook notifications</div>
+        <div class="foundation-item">TOTP two-factor auth + recovery codes</div>
+        <div class="foundation-item">Organizations + member roles (owner/admin/member)</div>
+        <div class="foundation-item">Credential vault (Fernet / VAULT_KEY)</div>
+        <div class="foundation-item">REST API versioning (/api/v1/*)</div>
+        <div class="foundation-item">Structured audit events + JSON/CSV reports</div>
+        <div class="foundation-item">Form state persistence · Mobile responsive UI</div>
+        <div class="foundation-item">Provider presets (Gmail, M365, Yahoo, Zoho)</div>
       </div>
     </div>
 
-    <!-- PHASE 2 -->
-    <div class="phase phase-2">
-      <div class="phase-header" onclick="togglePhase('phase2')">
-        <div class="phase-num">2</div>
-        <div class="phase-title">
-          <h2>Auth &amp; Multi-tenancy</h2>
-          <small>~2–3 weeks · Make it safe to deploy for multiple users</small>
-        </div>
-        <span class="phase-progress" id="phase2-progress">0 / 5</span>
-        <span class="phase-chevron">▾</span>
+    <!-- Phase 1 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p1">1</div>
+        <div class="phase-title">Backend Foundation</div>
+        <span class="phase-shipped">✓ Shipped</span>
+        <div class="phase-effort">~2 weeks</div>
       </div>
-      <div class="phase-body" id="phase2">
-        <div class="task" id="task-2-1">
-          <input type="checkbox" class="task-check" data-task="2-1" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">2.1</div>
-            <div class="task-title">User model &amp; admin bootstrap</div>
-            <div class="task-desc">New <code>users</code> SQLite table: <code>id</code>, <code>email</code>, <code>password_hash</code> (bcrypt/passlib), <code>is_admin</code>, <code>created_at</code>. First admin auto-created from <code>ADMIN_EMAIL</code> + <code>ADMIN_PASSWORD</code> env vars on first startup.</div>
-            <span class="task-tag tag-auth">auth</span>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Cleaned up the engine room before adding user-facing features: <strong>split the monolithic app.py into focused routers</strong>, added typed Pydantic models on all endpoints, and hardened startup/shutdown behavior.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Code Structure</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">✂️</div>
+              <div class="feature-content">
+                <div class="feature-name">Split <code>app.py</code> into FastAPI routers</div>
+                <div class="feature-detail">640-line God-file split into <code>routers/jobs.py</code>, <code>routers/batches.py</code>, <code>routers/providers.py</code>. <code>create_app()</code> became a thin wiring function.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔷</div>
+              <div class="feature-content">
+                <div class="feature-name">Pydantic request models</div>
+                <div class="feature-detail">Typed <code>JobRequest</code>, <code>BatchRequest</code>, <code>BatchPreflightRequest</code> on all POST endpoints. FastAPI auto-validates and auto-documents.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🧹</div>
+              <div class="feature-content">
+                <div class="feature-name">Remove duplicated helpers</div>
+                <div class="feature-detail"><code>_batch_status_from_counts</code> was copy-pasted verbatim in both <code>app.py</code> and <code>state.py</code>. Removed the app-layer copy.</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="task" id="task-2-2">
-          <input type="checkbox" class="task-check" data-task="2-2" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">2.2</div>
-            <div class="task-title">JWT session management</div>
-            <div class="task-desc">JWT tokens in <code>HttpOnly; SameSite=Strict</code> cookies. <code>POST /auth/login</code>, <code>POST /auth/logout</code>, <code>GET /auth/me</code>. Auth middleware via <code>fastapi.Depends</code> on all <code>/api/*</code> routes. Secret from <code>JWT_SECRET</code> env var.</div>
-            <span class="task-tag tag-auth">auth</span>
-            <span class="task-tag tag-security">security</span>
-          </div>
-        </div>
-        <div class="task" id="task-2-3">
-          <input type="checkbox" class="task-check" data-task="2-3" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">2.3</div>
-            <div class="task-title">Per-user job &amp; batch scoping</div>
-            <div class="task-desc">Add nullable <code>user_id</code> column to <code>jobs</code> and <code>batches</code> via <code>ALTER TABLE</code>. Existing rows → <code>NULL</code> (admin-visible). All new jobs/batches scoped to the authenticated user. Admins see everything.</div>
-            <span class="task-tag tag-auth">auth</span>
-          </div>
-        </div>
-        <div class="task" id="task-2-4">
-          <input type="checkbox" class="task-check" data-task="2-4" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">2.4</div>
-            <div class="task-title">Login UI page</div>
-            <div class="task-desc">Minimal <code>/login</code> page matching the existing dark-glass visual style. On auth success → redirect to dashboard. On any 401 API response → redirect to <code>/login</code>.</div>
-            <span class="task-tag tag-frontend">frontend</span>
-            <span class="task-tag tag-auth">auth</span>
-          </div>
-        </div>
-        <div class="task" id="task-2-5">
-          <input type="checkbox" class="task-check" data-task="2-5" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">2.5</div>
-            <div class="task-title">API key support</div>
-            <div class="task-desc">Per-user API keys for CLI/script access stored hashed in a new <code>api_keys</code> table. Bearer token auth alongside cookie sessions. Admin UI section for key generation and revocation.</div>
-            <span class="task-tag tag-auth">auth</span>
-            <span class="task-tag tag-security">security</span>
+        <div class="feature-group">
+          <div class="feature-group-title">Reliability</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">💥</div>
+              <div class="feature-content">
+                <div class="feature-name">Crash recovery for in-flight jobs</div>
+                <div class="feature-detail">On startup, any job stuck at <code>status = 'running'</code> is marked <code>failed</code>. Previously these hung forever after a server restart.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📝</div>
+              <div class="feature-content">
+                <div class="feature-name">Structured logging</div>
+                <div class="feature-detail">Python <code>logging</code> throughout <code>engine/runner.py</code>, <code>engine/preflight.py</code>, and all connectors. <code>LOG_LEVEL</code> env var (default <code>INFO</code>).</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔁</div>
+              <div class="feature-content">
+                <div class="feature-name">FastAPI lifespan (replace deprecated event hooks)</div>
+                <div class="feature-detail">Replaced <code>@app.on_event("shutdown")</code> with an <code>@asynccontextmanager</code> lifespan. Crash recovery runs on startup inside lifespan.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- PHASE 3 -->
-    <div class="phase phase-3">
-      <div class="phase-header" onclick="togglePhase('phase3')">
-        <div class="phase-num">3</div>
-        <div class="phase-title">
-          <h2>Frontend Quality</h2>
-          <small>~1–2 weeks · A product-grade UI that doesn't lose your work</small>
-        </div>
-        <span class="phase-progress" id="phase3-progress">0 / 5</span>
-        <span class="phase-chevron">▾</span>
+    <!-- Phase 2 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p2">2</div>
+        <div class="phase-title">Auth &amp; Multi-tenancy</div>
+        <span class="phase-shipped">✓ Shipped</span>
+        <div class="phase-effort">~2–3 weeks</div>
       </div>
-      <div class="phase-body" id="phase3">
-        <div class="task" id="task-3-1">
-          <input type="checkbox" class="task-check" data-task="3-1" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">3.1</div>
-            <div class="task-title">Split <code>app.js</code> into ES modules</div>
-            <div class="task-desc">1231-line monolith → <code>js/api.js</code>, <code>js/form.js</code>, <code>js/streams.js</code>, <code>js/jobs.js</code>, <code>js/batches.js</code>, <code>js/main.js</code>. Native browser modules, no bundler required. <code>index.html</code> loads <code>main.js</code> with <code>type="module"</code>.</div>
-            <span class="task-tag tag-refactor">refactor</span>
-            <span class="task-tag tag-frontend">frontend</span>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Made the application safe for multiple users: <strong>user accounts</strong> with bcrypt passwords, <strong>JWT sessions</strong> in HttpOnly cookies, per-user job scoping, and <strong>API keys</strong> for CLI access.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Identity</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">👤</div>
+              <div class="feature-content">
+                <div class="feature-name">User model &amp; admin bootstrap</div>
+                <div class="feature-detail"><code>users</code> table with <code>id</code>, <code>email</code>, <code>password_hash</code> (bcrypt), <code>is_admin</code>, <code>created_at</code>. First admin bootstrapped from <code>ADMIN_EMAIL</code>/<code>ADMIN_PASSWORD</code> env vars.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔐</div>
+              <div class="feature-content">
+                <div class="feature-name">JWT session management</div>
+                <div class="feature-detail">JWT in <code>HttpOnly; SameSite=Strict</code> cookies. <code>POST /auth/login</code>, <code>POST /auth/logout</code>, <code>GET /auth/me</code>. All <code>/api/*</code> routes require auth via <code>fastapi.Depends</code>.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🗝️</div>
+              <div class="feature-content">
+                <div class="feature-name">API key support</div>
+                <div class="feature-detail">Per-user API keys stored SHA-256-hashed in <code>api_keys</code> table. Bearer token auth alongside cookie sessions. Revocable from the UI.</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="task" id="task-3-2">
-          <input type="checkbox" class="task-check" data-task="3-2" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">3.2</div>
-            <div class="task-title">Form state persistence</div>
-            <div class="task-desc">Save host/port/username/workload/protocol/provider/TLS/sync-mode to <code>localStorage</code> (prefix <code>gm_form_</code>) on every change. Restore on page load. Passwords and OAuth tokens intentionally excluded.</div>
-            <span class="task-tag tag-ux">ux</span>
-            <span class="task-tag tag-frontend">frontend</span>
-          </div>
-        </div>
-        <div class="task" id="task-3-3">
-          <input type="checkbox" class="task-check" data-task="3-3" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">3.3</div>
-            <div class="task-title">Loading states on action buttons</div>
-            <div class="task-desc">Disable buttons and show a spinner during API calls. Prevents double-submission. Re-enable on response. Covers: Run Preflight, Build Plan, Start Background Job, Start Batch, Preview CSV, Batch Preflight.</div>
-            <span class="task-tag tag-ux">ux</span>
-            <span class="task-tag tag-reliability">reliability</span>
-          </div>
-        </div>
-        <div class="task" id="task-3-4">
-          <input type="checkbox" class="task-check" data-task="3-4" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">3.4</div>
-            <div class="task-title">Mobile responsive layout</div>
-            <div class="task-desc">Add CSS breakpoints at 900px and 600px. Below 900px: form + dashboard stack vertically. Below 600px: two-column grid fields collapse to single column. Important when customers use the UI on their own devices.</div>
-            <span class="task-tag tag-ux">ux</span>
-            <span class="task-tag tag-frontend">frontend</span>
-          </div>
-        </div>
-        <div class="task" id="task-3-5">
-          <input type="checkbox" class="task-check" data-task="3-5" onchange="onCheck(this)" />
-          <div class="task-body">
-            <div class="task-id">3.5</div>
-            <div class="task-title">Fix stale copy &amp; descriptions</div>
-            <div class="task-desc">Hero subtitle still reads "Asynchronous IMAP/POP3 migration to IMAP" — update to reflect CalDAV/CardDAV support. Update <code>&lt;title&gt;</code> and any other stale references throughout the UI.</div>
-            <span class="task-tag tag-ux">ux</span>
+        <div class="feature-group">
+          <div class="feature-group-title">Scoping &amp; UI</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🔒</div>
+              <div class="feature-content">
+                <div class="feature-name">Per-user job &amp; batch scoping</div>
+                <div class="feature-detail"><code>user_id</code> column on <code>jobs</code> and <code>batches</code>. Non-admin users see only their own. Admins see everything.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🖥️</div>
+              <div class="feature-content">
+                <div class="feature-name">Login UI page</div>
+                <div class="feature-detail">Dark-glass <code>/login</code> page matching the dashboard style. On 401 API responses → redirect to <code>/login</code>.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- BACKLOG -->
-    <div class="phase phase-backlog">
-      <div class="phase-header collapsed" onclick="togglePhase('backlog')">
-        <div class="phase-num">↓</div>
-        <div class="phase-title">
-          <h2>Backlog</h2>
-          <small>Future releases · Not blocking the product</small>
-        </div>
-        <span class="phase-chevron" style="transform:rotate(-90deg)">▾</span>
+    <!-- Phase 3 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p3">3</div>
+        <div class="phase-title">Frontend Quality</div>
+        <span class="phase-shipped">✓ Shipped</span>
+        <div class="phase-effort">~1–2 weeks</div>
       </div>
-      <div class="phase-body hidden" id="backlog">
-        <table class="backlog-table">
-          <tr><td>Docker image + <code>docker-compose.yml</code></td><td>Prerequisite for easy self-hosted deployment</td></tr>
-          <tr><td>GitHub Actions CI</td><td>Lint (ruff) + tests (unittest) on push/PR</td></tr>
-          <tr><td>OpenAPI schema export</td><td>FastAPI auto-generates; add export script and version pinning</td></tr>
-          <tr><td>Adaptive SSE polling</td><td>Back off interval when jobs are idle; currently fixed 1–1.5s</td></tr>
-          <tr><td>Tasks / Notes workload</td><td>Already modeled in domain layer, needs connector + runner wiring</td></tr>
-          <tr><td>WebDAV library for CalDAV/CardDAV</td><td>Replace raw HTTP in <code>dav.py</code> with <code>caldav</code> library</td></tr>
-          <tr><td>Webhooks on job completion</td><td>POST callback URL with job report payload</td></tr>
-          <tr><td>Rate limiting on batch preflight</td><td>Prevent abuse on the preflight endpoint</td></tr>
-          <tr><td>Role-based access control</td><td>Admin / operator / viewer beyond the <code>is_admin</code> flag</td></tr>
-          <tr><td>Password reset flow</td><td>Email-based reset; requires SMTP config</td></tr>
-        </table>
+      <div class="phase-body">
+        <div class="phase-desc">
+          A product-grade UI that doesn't lose your work: <strong>split the 1231-line app.js monolith</strong> into ES modules, added form state persistence, loading states, and a mobile-responsive layout.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Code Structure</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">✂️</div>
+              <div class="feature-content">
+                <div class="feature-name">Split <code>app.js</code> into ES modules</div>
+                <div class="feature-detail">1231-line monolith → <code>js/api.js</code>, <code>js/form.js</code>, <code>js/streams.js</code>, <code>js/jobs.js</code>, <code>js/batches.js</code>, <code>js/main.js</code>. Native browser modules, no bundler.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">UX</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">💾</div>
+              <div class="feature-content">
+                <div class="feature-name">Form state persistence</div>
+                <div class="feature-detail">Host/port/username/workload/protocol/provider/TLS/sync-mode saved to <code>localStorage</code> on every change. Restored on page load. Passwords and OAuth tokens excluded.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">⏳</div>
+              <div class="feature-content">
+                <div class="feature-name">Loading states on action buttons</div>
+                <div class="feature-detail">Buttons disabled + spinner shown during API calls to prevent double-submission. Covers all action endpoints.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📱</div>
+              <div class="feature-content">
+                <div class="feature-name">Mobile responsive layout</div>
+                <div class="feature-detail">CSS breakpoints at 900px and 600px. Form + dashboard stack vertically on small screens; two-column grids collapse to single column.</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- DECISIONS -->
+    <!-- Phase 4 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p4">4</div>
+        <div class="phase-title">Production Hardening</div>
+        <span class="phase-shipped">✓ Shipped</span>
+        <div class="phase-effort">~3–4 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Made the application deployable in real environments: <strong>Docker packaging</strong>, <strong>rate limiting</strong>, proper <strong>secret management</strong>, and <strong>health/readiness probes</strong>. No new user-visible features — this phase makes existing features reliable at scale.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Deployment</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🐳</div>
+              <div class="feature-content">
+                <div class="feature-name">Docker + docker-compose <span class="tag must">must</span></div>
+                <div class="feature-detail">Multi-stage Dockerfile. docker-compose with volume-mounted <code>data/state.db</code> and env file for secrets. No root user.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔁</div>
+              <div class="feature-content">
+                <div class="feature-name">Reverse proxy guide <span class="tag must">must</span></div>
+                <div class="feature-detail">Example nginx config with HTTPS termination, <code>proxy_pass</code>, and correct SSE headers (<code>X-Accel-Buffering: no</code>).</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🗄️</div>
+              <div class="feature-content">
+                <div class="feature-name">Backup + restore CLI <span class="tag should">should</span></div>
+                <div class="feature-detail"><code>groupware-migrator backup</code> and <code>restore</code> commands for <code>state.db</code> with integrity verification.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Security</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🚦</div>
+              <div class="feature-content">
+                <div class="feature-name">Rate limiting on auth endpoints <span class="tag must">must</span></div>
+                <div class="feature-detail">Throttle <code>/auth/login</code> to prevent brute-force. Custom middleware keyed by IP.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔑</div>
+              <div class="feature-content">
+                <div class="feature-name">Password change flow <span class="tag should">should</span></div>
+                <div class="feature-detail"><code>POST /auth/change-password</code> requires current password. Admin-triggered reset via the admin panel.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🛡️</div>
+              <div class="feature-content">
+                <div class="feature-name">Security headers middleware <span class="tag should">should</span></div>
+                <div class="feature-detail"><code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, <code>Referrer-Policy</code>, <code>Content-Security-Policy</code> via FastAPI middleware.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Reliability</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">❤️</div>
+              <div class="feature-content">
+                <div class="feature-name">Liveness vs. readiness probes <span class="tag must">must</span></div>
+                <div class="feature-detail">Separate <code>/health/live</code> (always 200) and <code>/health/ready</code> (checks DB connectivity). Kubernetes-compatible.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔄</div>
+              <div class="feature-content">
+                <div class="feature-name">Job retry policy <span class="tag should">should</span></div>
+                <div class="feature-detail">Optional auto-retry on transient errors (configurable <code>max_retries</code>). Exponential backoff. Visible in audit events.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">💾</div>
+              <div class="feature-content">
+                <div class="feature-name">Graceful shutdown with drain <span class="tag should">should</span></div>
+                <div class="feature-detail">On SIGTERM, stop accepting new jobs, wait up to N seconds for running jobs to finish checkpointing, then shut down cleanly.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 5 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p5">5</div>
+        <div class="phase-title">Scheduling &amp; Automation</div>
+        <span class="phase-shipped">✓ Shipped</span>
+        <div class="phase-effort">~4–5 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Let migrations run <strong>automatically on a schedule</strong>, notify users of completions/failures, and support <strong>automated pipelines</strong> via webhooks. The engine is already incremental-sync-capable — this phase puts that capability on autopilot.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Scheduled Jobs</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📅</div>
+              <div class="feature-content">
+                <div class="feature-name">Cron-style job schedules <span class="tag must">must</span></div>
+                <div class="feature-detail">Cron expressions and interval strings (<code>6h</code>, <code>30m</code>) in <code>scheduled_jobs</code> table. Background <code>SchedulerThread</code> fires incremental migrations. UI to create/pause/delete.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">⏸️</div>
+              <div class="feature-content">
+                <div class="feature-name">Pause / resume schedules <span class="tag should">should</span></div>
+                <div class="feature-detail">Toggle a schedule inactive without deleting it. Next-run and last-run status shown in the dashboard.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Notifications</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🔔</div>
+              <div class="feature-content">
+                <div class="feature-name">Webhook notifications <span class="tag must">must</span></div>
+                <div class="feature-detail">Register callback URLs via <code>POST /api/webhooks</code>. Fires on <code>job.completed</code>, <code>job.failed</code>, <code>job.cancelled</code>. HMAC-SHA256 signed. 3-attempt retry on 5xx.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📧</div>
+              <div class="feature-content">
+                <div class="feature-name">Email notifications <span class="tag should">should</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred — SMTP required)</span></div>
+                <div class="feature-detail">Optional SMTP config for completion/failure emails to the job owner. Webhooks cover the same use case in the meantime.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Job Queue</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">⚖️</div>
+              <div class="feature-content">
+                <div class="feature-name">Job priority levels <span class="tag should">should</span></div>
+                <div class="feature-detail">High / normal / low priority stored per job. Field is present; execution-order enforcement pending ThreadPoolExecutor replacement.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🚫</div>
+              <div class="feature-content">
+                <div class="feature-name">Job cancellation <span class="tag must">must</span></div>
+                <div class="feature-detail"><code>POST /api/jobs/{job_id}/cancel</code> — gracefully stops a running job, marks it cancelled. Checkpointed items are preserved.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 6 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p6">6</div>
+        <div class="phase-title">Admin Dashboard &amp; Observability</div>
+        <span class="phase-shipped">✓ Shipped</span>
+        <div class="phase-effort">~3–4 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          First-class tooling for administrators: <strong>user management</strong>, system health overview, structured audit log, and <strong>data retention cleanup</strong>. Raw data turned into actionable insight.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Admin UI</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">👥</div>
+              <div class="feature-content">
+                <div class="feature-name">User management panel <span class="tag must">must</span></div>
+                <div class="feature-detail">List users, create/deactivate accounts, reset passwords, view per-user job counts and last activity. Admin-only dashboard tab.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📊</div>
+              <div class="feature-content">
+                <div class="feature-name">System overview dashboard <span class="tag must">must</span></div>
+                <div class="feature-detail">Total jobs (last 7/30 days), success rate, items migrated, active jobs, queue depth. Auto-refreshing stat cards.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Audit &amp; Compliance</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📋</div>
+              <div class="feature-content">
+                <div class="feature-name">Admin audit log <span class="tag must">must</span></div>
+                <div class="feature-detail">All admin actions (user creation, deletion, password reset, key revocation) in a separate <code>admin_audit_events</code> table. Exportable CSV.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🗑️</div>
+              <div class="feature-content">
+                <div class="feature-name">Data retention policies <span class="tag should">should</span></div>
+                <div class="feature-detail">Configurable max age for completed jobs, audit events, and batch records. On-demand cleanup from the admin panel.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📈</div>
+              <div class="feature-content">
+                <div class="feature-name">Prometheus metrics endpoint <span class="tag should">should</span> <span style="font-size:0.75rem;color:var(--yellow)">(not yet implemented)</span></div>
+                <div class="feature-detail"><code>GET /metrics</code> (Prometheus format) exposing active jobs, queue depth, jobs/hour, error rate, SQLite size.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 7 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p7">7</div>
+        <div class="phase-title">Enterprise Auth &amp; Multi-tenancy</div>
+        <span class="phase-shipped">✓ Shipped</span>
+        <div class="phase-effort">~6–8 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Enterprise authentication patterns and <strong>true multi-tenant isolation</strong>: organizations with their own data spaces, TOTP 2FA, and role-based access control beyond the original admin/user binary.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Authentication</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📱</div>
+              <div class="feature-content">
+                <div class="feature-name">TOTP two-factor auth <span class="tag should">should</span></div>
+                <div class="feature-detail">Optional per-user TOTP (Google Authenticator compatible). QR code enrollment via <code>/auth/totp/setup</code>. 10 recovery codes generated at setup.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🏢</div>
+              <div class="feature-content">
+                <div class="feature-name">SAML 2.0 / OIDC SSO <span class="tag should">should</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred — IdP required)</span></div>
+                <div class="feature-detail">Infrastructure groundwork exists. Awaiting IdP selection (Okta, Auth0, Keycloak, etc.) and org-specific configuration.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📁</div>
+              <div class="feature-content">
+                <div class="feature-name">LDAP / Active Directory bind <span class="tag could">could</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred)</span></div>
+                <div class="feature-detail">Bind LDAP for credential validation. Group membership maps to roles. Needs live LDAP server and schema decisions.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Multi-tenancy</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🏗️</div>
+              <div class="feature-content">
+                <div class="feature-name">Organizations / workspaces <span class="tag should">should</span></div>
+                <div class="feature-detail"><code>organizations</code> + <code>org_memberships</code> tables. Users belong to orgs. Org admins manage their members. Super-admins see all orgs.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🎭</div>
+              <div class="feature-content">
+                <div class="feature-name">Role-based access control (RBAC) <span class="tag should">should</span></div>
+                <div class="feature-detail">Roles: <code>viewer</code>, <code>operator</code>, <code>admin</code>, <code>super_admin</code>. Role rank enforced via <code>fastapi.Depends</code> on every protected endpoint.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔒</div>
+              <div class="feature-content">
+                <div class="feature-name">Credential vault <span class="tag could">could</span></div>
+                <div class="feature-detail">Fernet encryption for scheduled job credentials at rest via <code>VAULT_KEY</code> env var. Decrypted only at connector creation time in worker threads.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🌐</div>
+              <div class="feature-content">
+                <div class="feature-name">REST API versioning <span class="tag should">should</span></div>
+                <div class="feature-detail">All endpoints accessible at both <code>/api/*</code> and <code>/api/v1/*</code>. OpenAPI schema auto-generated by FastAPI at <code>/openapi.json</code>.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Ecosystem</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📦</div>
+              <div class="feature-content">
+                <div class="feature-name">Plugin / connector SDK <span class="tag could">could</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred)</span></div>
+                <div class="feature-detail">Abstract <code>SourceConnector</code> / <code>DestinationConnector</code> interfaces are documented. Cookiecutter template for third-party adapters (Exchange EWS, Nextcloud) pending.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-spacer"></div>
+
+    <!-- Architecture decisions -->
     <div class="decisions">
       <h2>Architecture Decisions</h2>
       <div class="decision"><span class="decision-key">Sequence</span><span class="decision-val">Foundation first — auth on top of well-structured code is easier to maintain long-term</span></div>
       <div class="decision"><span class="decision-key">Auth model</span><span class="decision-val">Multi-user email + password (not SSO — avoids IdP dependency for early product)</span></div>
       <div class="decision"><span class="decision-key">Session storage</span><span class="decision-val">HttpOnly cookies, not localStorage — prevents XSS token theft</span></div>
       <div class="decision"><span class="decision-key">No bundler</span><span class="decision-val">ES modules are sufficient given the project's vanilla JS philosophy</span></div>
-      <div class="decision"><span class="decision-key">SQLite stays</span><span class="decision-val">Appropriate for SaaS at this scale; no database migration to a heavier engine needed</span></div>
+      <div class="decision"><span class="decision-key">SQLite stays</span><span class="decision-val">Appropriate for self-hosted SaaS at this scale; no migration to a heavier engine needed</span></div>
+      <div class="decision"><span class="decision-key">Threading model</span><span class="decision-val">ThreadPoolExecutor for background jobs; no external queue until SQLite + threading demonstrably breaks</span></div>
     </div>
 
-    <footer>
-      Spec: <code>docs/superpowers/specs/2026-06-10-product-roadmap-design.md</code>
-      &nbsp;·&nbsp; Progress is saved in your browser (localStorage).
-    </footer>
+    <!-- Guiding principles -->
+    <div class="principles">
+      <h2>Guiding Principles for Future Development</h2>
+      <div class="principles-grid">
+        <div class="principle">
+          <div class="principle-title">Local-first by default</div>
+          <div class="principle-body">SQLite stays the default. PostgreSQL is opt-in via an abstraction layer. New features must work without external services.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Backward compatibility</div>
+          <div class="principle-body">Existing job payloads, CLI configs, and CSV formats must keep working. Schema migrations are always additive — no column drops or renames without aliases.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Tests gate every phase</div>
+          <div class="principle-body">Each phase ships with tests covering new behavior. Integration tests hit real SQLite, not mocks — a lesson learned from past mock/prod divergence.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Security is not an afterthought</div>
+          <div class="principle-body">Rate limiting, audit logs, and RBAC shipped in Phases 4 and 7, not "later". Auth features come from requirements, not retrofits.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Simple beats clever</div>
+          <div class="principle-body">No message queues, no microservices, no ORM until the SQLite + threading model demonstrably breaks. Each layer is added when the layer below it is insufficient.</div>
+        </div>
+        <div class="principle">
+          <div class="principle-title">Deploy anywhere</div>
+          <div class="principle-body">A single Docker container with one volume mount is the happy path. Self-hosted, no cloud dependencies, no license server.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remaining gaps -->
+    <div class="defer-section" style="border-color:rgba(251,191,36,0.25);background:rgba(251,191,36,0.04)">
+      <h2 style="color:#fbbf24">Remaining Gaps — Deferred, Not Forgotten</h2>
+      <p style="font-size:0.88rem;color:#8892a4;margin-bottom:14px">These were planned but require external services or a separate integration phase.</p>
+      <div class="defer-list">
+        <div class="defer-item"><strong>SAML 2.0 / OIDC SSO</strong> — Infrastructure exists; waiting on IdP selection (Okta, Auth0, Keycloak).</div>
+        <div class="defer-item"><strong>LDAP / Active Directory bind</strong> — Needs a live LDAP server and org-specific schema decisions.</div>
+        <div class="defer-item"><strong>Email notifications (SMTP)</strong> — Webhooks cover the same use case; email added once SMTP is wired in.</div>
+        <div class="defer-item"><strong>Plugin / connector SDK</strong> — Base classes are ready; packaging and docs story missing.</div>
+        <div class="defer-item"><strong>Prometheus metrics endpoint</strong> — Useful for production monitoring; straightforward to add when needed.</div>
+      </div>
+    </div>
+
+    <!-- Out of scope -->
+    <div class="defer-section">
+      <h2>Intentionally Out of Scope</h2>
+      <div class="defer-list">
+        <div class="defer-item">PostgreSQL / MySQL backend</div>
+        <div class="defer-item">Tasks &amp; Notes workloads</div>
+        <div class="defer-item">Exchange EWS protocol</div>
+        <div class="defer-item">Real-time push (WebSockets beyond SSE)</div>
+        <div class="defer-item">Mobile apps</div>
+        <div class="defer-item">Billing / subscription tiers</div>
+        <div class="defer-item">Horizontal scaling (multi-instance)</div>
+        <div class="defer-item">Cloud storage for state (S3, GCS)</div>
+        <div class="defer-item">On-the-fly protocol conversion (IMAP→CalDAV)</div>
+        <div class="defer-item">Full-text search across migrated content</div>
+      </div>
+    </div>
+
   </div>
-
-  <script>
-    const STORAGE_KEY = 'gm_roadmap_checks';
-
-    function loadChecks() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
-    }
-    function saveChecks(checks) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(checks));
-    }
-
-    function onCheck(el) {
-      const checks = loadChecks();
-      checks[el.dataset.task] = el.checked;
-      saveChecks(checks);
-      updateTask(el);
-      updateProgress();
-    }
-
-    function updateTask(el) {
-      const task = el.closest('.task');
-      if (el.checked) task.classList.add('done');
-      else task.classList.remove('done');
-    }
-
-    const PHASE_TASKS = {
-      phase1: ['1-1','1-2','1-3','1-4','1-5','1-6'],
-      phase2: ['2-1','2-2','2-3','2-4','2-5'],
-      phase3: ['3-1','3-2','3-3','3-4','3-5'],
-    };
-    const TOTAL = 16;
-
-    function updateProgress() {
-      const checks = loadChecks();
-      let totalDone = 0;
-      for (const [phase, tasks] of Object.entries(PHASE_TASKS)) {
-        const done = tasks.filter(t => checks[t]).length;
-        totalDone += done;
-        const el = document.getElementById(phase + '-progress');
-        if (el) el.textContent = `${done} / ${tasks.length}`;
-      }
-      const pct = Math.round((totalDone / TOTAL) * 100);
-      document.getElementById('overall-bar').style.width = pct + '%';
-      document.getElementById('overall-label').textContent = `${totalDone} of ${TOTAL} tasks complete`;
-      document.getElementById('overall-pct').textContent = pct + '%';
-    }
-
-    function togglePhase(id) {
-      const body = document.getElementById(id);
-      const header = body.previousElementSibling;
-      const chevron = header.querySelector('.phase-chevron');
-      const isHidden = body.classList.contains('hidden');
-      body.classList.toggle('hidden', !isHidden);
-      header.classList.toggle('collapsed', !isHidden);
-    }
-
-    // Restore state on load
-    (function init() {
-      const checks = loadChecks();
-      // Phase 1 shipped — seed as complete on first visit
-      ['1-1','1-2','1-3','1-4','1-5','1-6'].forEach(t => {
-        if (!(t in checks)) checks[t] = true;
-      });
-      saveChecks(checks);
-      document.querySelectorAll('.task-check').forEach(el => {
-        if (checks[el.dataset.task]) {
-          el.checked = true;
-          updateTask(el);
-        }
-      });
-      updateProgress();
-    })();
-  </script>
 </body>
 </html>
