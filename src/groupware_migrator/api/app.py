@@ -19,6 +19,7 @@ from groupware_migrator.api.routers.providers import create_providers_router
 from groupware_migrator.api.routers.scheduler_router import create_scheduler_router
 from groupware_migrator.api.routers.webhooks_router import create_webhooks_router
 from groupware_migrator.engine.background import BackgroundJobManager
+from groupware_migrator.engine.mailer import MailDeliveryManager
 from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.scheduler import SchedulerThread
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
@@ -71,6 +72,7 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     state_store = SQLiteStateStore(Path(state_db_path))
     runner = MigrationRunner(state_store=state_store)
     webhook_manager = WebhookDeliveryManager(state_store)
+    mail_manager = MailDeliveryManager(state_store)
     background_jobs = BackgroundJobManager(
         state_store=state_store, runner=runner, webhook_manager=webhook_manager
     )
@@ -121,6 +123,7 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     app.state.background_jobs = background_jobs
     app.state.jwt_secret = jwt_secret
     app.state.webhook_manager = webhook_manager
+    app.state.mail_manager = mail_manager
     app.state.scheduler = scheduler
 
     @app.middleware("http")
@@ -195,7 +198,7 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     jobs_router = create_jobs_router(state_store, background_jobs, runner)
     batches_router = create_batches_router(state_store, background_jobs)
     providers_router = create_providers_router()
-    admin_router = create_admin_router(state_store)
+    admin_router = create_admin_router(state_store, mail_manager=mail_manager)
     scheduler_router = create_scheduler_router(state_store)
     webhooks_router = create_webhooks_router(state_store)
     orgs_router = create_orgs_router(state_store)

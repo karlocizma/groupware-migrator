@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from groupware_migrator.api.auth import require_admin, require_user
+from groupware_migrator.api.auth import require_admin
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
+
+if TYPE_CHECKING:
+    from groupware_migrator.engine.mailer import MailDeliveryManager
 
 
 class UpdateUserPayload(BaseModel):
@@ -20,7 +25,10 @@ class CleanupPayload(BaseModel):
     older_than_days: int = 90
 
 
-def create_admin_router(state_store: SQLiteStateStore) -> APIRouter:
+def create_admin_router(
+    state_store: SQLiteStateStore,
+    mail_manager: "MailDeliveryManager | None" = None,
+) -> APIRouter:
     router = APIRouter(prefix="/admin")
 
     @router.get("/stats")
@@ -92,5 +100,22 @@ def create_admin_router(state_store: SQLiteStateStore) -> APIRouter:
             details={"older_than_days": payload.older_than_days, **result},
         )
         return result
+
+    @router.post("/smtp/test")
+    def smtp_test(admin: dict = Depends(require_admin)) -> dict:
+        if mail_manager is None or not mail_manager.is_configured():
+            raise HTTPException(
+                status_code=503,
+                detail="SMTP is not configured (SMTP_HOST not set).",
+            )
+        user = state_store.get_user_by_id(str(admin["sub"]))
+        to_address = str(user["email"]) if user and user.get("email") else ""
+        if not to_address:
+            raise HTTPException(status_code=400, detail="Admin account has no email address.")
+        try:
+            mail_manager.send_test(to_address=to_address)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"SMTP error: {exc}") from exc
+        return {"ok": True, "sent_to": to_address}
 
     return router

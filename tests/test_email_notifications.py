@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import smtplib
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -272,3 +273,46 @@ class TestNotificationPrefsAPI(unittest.TestCase):
         bare = TestClient(self.app, raise_server_exceptions=True)
         resp = bare.get("/auth/notifications")
         self.assertEqual(resp.status_code, 401)
+
+
+class TestSmtpTestEndpoint(unittest.TestCase):
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        db = str(Path(self._tmp.name) / "state.db")
+        self.app = create_app(state_db_path=db)
+        store: SQLiteStateStore = self.app.state.state_store
+        store.create_user(
+            email="admin@example.com",
+            password_hash=hash_password("adminpass"),
+            is_admin=True,
+        )
+        self.client = _authed_client(self.app, email="admin@example.com", password="adminpass")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_returns_503_when_not_configured(self):
+        env = {k: v for k, v in os.environ.items() if k != "SMTP_HOST"}
+        with patch.dict(os.environ, env, clear=True):
+            resp = self.client.post("/api/admin/smtp/test")
+        self.assertEqual(resp.status_code, 503)
+        self.assertIn("SMTP_HOST", resp.json()["detail"])
+
+    def test_returns_200_on_success(self):
+        with patch.dict(os.environ, {"SMTP_HOST": "smtp.example.com"}):
+            with patch("groupware_migrator.engine.mailer._send_smtp"):
+                resp = self.client.post("/api/admin/smtp/test")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["sent_to"], "admin@example.com")
+
+    def test_returns_502_on_smtp_error(self):
+        with patch.dict(os.environ, {"SMTP_HOST": "smtp.example.com"}):
+            with patch(
+                "groupware_migrator.engine.mailer._send_smtp",
+                side_effect=smtplib.SMTPException("connection failed"),
+            ):
+                resp = self.client.post("/api/admin/smtp/test")
+        self.assertEqual(resp.status_code, 502)
+        self.assertIn("SMTP error", resp.json()["detail"])
