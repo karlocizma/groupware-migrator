@@ -162,6 +162,7 @@
         <div class="foundation-item">Provider presets (Gmail, M365, Yahoo, Zoho)</div>
         <div class="foundation-item">HTML email notifications (SMTP, per-user opt-in)</div>
         <div class="foundation-item">LDAP / Active Directory bind with auto-provisioning</div>
+        <div class="foundation-item">Plugin / connector SDK — third-party connectors via entry points</div>
       </div>
     </div>
 
@@ -647,8 +648,8 @@
             <div class="feature">
               <div class="feature-icon">📦</div>
               <div class="feature-content">
-                <div class="feature-name">Plugin / connector SDK <span class="tag could">could</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred)</span></div>
-                <div class="feature-detail">Abstract <code>SourceConnector</code> / <code>DestinationConnector</code> interfaces are documented. Cookiecutter template for third-party adapters (Exchange EWS, Nextcloud) pending.</div>
+                <div class="feature-name">Plugin / connector SDK <span class="tag shipped">✓ shipped</span></div>
+                <div class="feature-detail">Abstract <code>SourceConnector</code> / <code>DestinationConnector</code> interfaces published as <code>groupware_migrator.sdk</code>. Third-party connectors register new protocols via setuptools entry points. See <code>examples/sample_plugin/</code>.</div>
               </div>
             </div>
           </div>
@@ -706,7 +707,6 @@
       <p style="font-size:0.88rem;color:#8892a4;margin-bottom:14px">These were planned but require external services or a separate integration phase.</p>
       <div class="defer-list">
         <div class="defer-item"><strong>SAML 2.0 / OIDC SSO</strong> — Infrastructure exists; waiting on IdP selection (Okta, Auth0, Keycloak).</div>
-        <div class="defer-item"><strong>Plugin / connector SDK</strong> — Base classes are ready; packaging and docs story missing.</div>
         <div class="defer-item"><strong>Prometheus metrics endpoint</strong> — Useful for production monitoring; straightforward to add when needed.</div>
       </div>
     </div>

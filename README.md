@@ -127,6 +127,7 @@ All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bea
 | `PATCH` | `/auth/notifications` | Update your email notification preferences |
 | `POST` | `/api/admin/smtp/test` | Send a test email to verify SMTP config (admin only) |
 | `GET` | `/api/admin/ldap/status` | Check whether LDAP is configured (admin only) |
+| `GET` | `/api/admin/plugins` | List installed connector plugins (admin only) |
 
 ### Jobs
 
@@ -293,6 +294,20 @@ All persistence goes through `SQLiteStateStore`. Key tables:
 3. All `/api/*` routes require the cookie or an `Authorization: Bearer <api-key>` header.
 4. Role-based access: `viewer` (read-only), `operator` (start/cancel jobs), `admin` (user management), `super_admin` (org management, all admin actions).
 5. API keys are SHA-256 hashed in the database; the raw key is returned once on creation.
+
+## Plugin SDK
+
+Third-party connectors can be installed as Python packages. Implement `SourceConnector` or `DestinationConnector` from `groupware_migrator.sdk` and register via setuptools entry points:
+
+```toml
+[project.entry-points."groupware_migrator.source_connectors"]
+myproto = "my_package.connector:MySourceConnector"
+
+[project.entry-points."groupware_migrator.destination_connectors"]
+myproto = "my_package.connector:MyDestinationConnector"
+```
+
+After `pip install my-package`, specify `"protocol": "myproto"` in migration configs. See `examples/sample_plugin/` for a complete working example. Installed plugins are listed at `GET /api/admin/plugins`.
 
 ## Notes
 

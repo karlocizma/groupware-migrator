@@ -30,6 +30,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | UI | Dark-glass dashboard, login page, admin panel, schedules page, org page |
 | Email | SMTP-based HTML email notifications per-user opt-in on job completion, failure, cancellation |
 | LDAP / AD | Active Directory / LDAP bind — coexisting auth backend with auto-provisioning |
+| Plugin SDK | Connector plugin system — third-party packages register new protocols via entry points |
 
 ---
 
@@ -152,7 +153,6 @@ These were planned but require external services or a separate integration phase
 | Item | Blocker |
 |---|---|
 | **SAML 2.0 / OIDC SSO** | Infrastructure groundwork exists; waiting on IdP selection (Okta, Auth0, Keycloak) |
-| **Plugin / connector SDK** | Connector base classes are ready; packaging and docs story missing |
 | **Prometheus metrics endpoint** | Straightforward to add when production monitoring is needed |
 
 ---
