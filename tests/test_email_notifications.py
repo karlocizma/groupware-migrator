@@ -1,10 +1,13 @@
 """Tests for email notification preferences in the state store."""
 from __future__ import annotations
 
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock, patch
 
+from groupware_migrator.engine.mailer import MailDeliveryManager
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
 
 
@@ -91,13 +94,6 @@ class TestNotificationPrefs(unittest.TestCase):
         self.assertFalse(prefs["on_cancelled"])
 
 
-import os
-import smtplib
-from unittest.mock import MagicMock, patch
-
-from groupware_migrator.engine.mailer import MailDeliveryManager
-
-
 class TestMailDeliveryManagerIsConfigured(unittest.TestCase):
     def test_not_configured_when_no_host(self):
         with TemporaryDirectory() as tmp:
@@ -128,14 +124,14 @@ class TestMailDeliveryManagerFire(unittest.TestCase):
         mgr = MailDeliveryManager(self.store)
         env = {k: v for k, v in os.environ.items() if k != "SMTP_HOST"}
         with patch.dict(os.environ, env, clear=True):
-            with patch("threading.Thread") as mock_thread:
+            with patch("groupware_migrator.engine.mailer.threading.Thread") as mock_thread:
                 mgr.fire(event_type="job.completed", job_row={"status": "completed"}, user_id=self.user_id)
                 mock_thread.assert_not_called()
 
     def test_noop_when_user_id_is_none(self):
         mgr = MailDeliveryManager(self.store)
         with patch.dict(os.environ, {"SMTP_HOST": "smtp.example.com"}):
-            with patch("threading.Thread") as mock_thread:
+            with patch("groupware_migrator.engine.mailer.threading.Thread") as mock_thread:
                 mgr.fire(event_type="job.completed", job_row={"status": "completed"}, user_id=None)
                 mock_thread.assert_not_called()
 
@@ -145,7 +141,7 @@ class TestMailDeliveryManagerFire(unittest.TestCase):
         )
         mgr = MailDeliveryManager(self.store)
         with patch.dict(os.environ, {"SMTP_HOST": "smtp.example.com"}):
-            with patch("threading.Thread") as mock_thread:
+            with patch("groupware_migrator.engine.mailer.threading.Thread") as mock_thread:
                 mgr.fire(event_type="job.completed", job_row={"status": "completed"}, user_id=self.user_id)
                 mock_thread.assert_not_called()
 
@@ -155,7 +151,7 @@ class TestMailDeliveryManagerFire(unittest.TestCase):
         )
         mgr = MailDeliveryManager(self.store)
         with patch.dict(os.environ, {"SMTP_HOST": "smtp.example.com"}):
-            with patch("threading.Thread") as mock_thread:
+            with patch("groupware_migrator.engine.mailer.threading.Thread") as mock_thread:
                 mock_thread.return_value = MagicMock()
                 mgr.fire(
                     event_type="job.completed",
@@ -165,6 +161,7 @@ class TestMailDeliveryManagerFire(unittest.TestCase):
                 mock_thread.assert_called_once()
                 _, kwargs = mock_thread.call_args
                 self.assertTrue(kwargs.get("daemon"))
+                self.assertEqual(kwargs.get("target"), mgr._deliver)
 
 
 class TestMailDeliveryManagerSendTest(unittest.TestCase):

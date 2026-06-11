@@ -4,6 +4,7 @@ import logging
 import os
 import smtplib
 import threading
+from html import escape
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TYPE_CHECKING
@@ -182,7 +183,7 @@ def _render_html(job_row: dict) -> str:
         f'<tr><td style="padding:0 28px 16px">'
         f'<p style="color:#f87171;font-size:0.83rem;background:rgba(248,113,113,0.1);'
         f'border:1px solid rgba(248,113,113,0.2);border-radius:6px;padding:10px 14px;'
-        f'margin:0;word-break:break-word">{job_row["last_error"]}</p></td></tr>'
+        f'margin:0;word-break:break-word">{escape(str(job_row["last_error"]))}</p></td></tr>'
     ) if job_row.get("last_error") else ""
     return (
         f'<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0f1117;'
@@ -192,7 +193,7 @@ def _render_html(job_row: dict) -> str:
         f'<tr><td style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,0.08)">'
         f'<span style="font-size:1.1rem;font-weight:700;color:#e2e8f0">Groupware Migrator</span></td></tr>'
         f'<tr><td style="padding:28px 28px 16px">'
-        f'<p style="color:#e2e8f0;font-size:1.1rem;font-weight:600;margin:0 0 8px">{job_name}</p>'
+        f'<p style="color:#e2e8f0;font-size:1.1rem;font-weight:600;margin:0 0 8px">{escape(str(job_name))}</p>'
         f'<span style="display:inline-block;background:{colour}22;border:1px solid {colour}44;'
         f'color:{colour};border-radius:6px;padding:3px 10px;font-size:0.82rem;font-weight:600">{label}</span>'
         f'</td></tr>'
