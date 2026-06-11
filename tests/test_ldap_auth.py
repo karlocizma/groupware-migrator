@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import os
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
 from groupware_migrator.engine.ldap_auth import LDAPAuthBackend, LDAPAuthError
+from groupware_migrator.engine.state import SQLiteStateStore, hash_password
 
 
 class TestLDAPAuthBackendIsConfigured(unittest.TestCase):
@@ -117,3 +120,41 @@ class TestLDAPAuthBackendAuthenticate(unittest.TestCase):
 
                 with self.assertRaises(LDAPAuthError):
                     mgr.authenticate("user@example.com", "pass")
+
+
+def _store(tmp: str) -> SQLiteStateStore:
+    return SQLiteStateStore(Path(tmp) / "state.db")
+
+
+class TestAuthBackendColumn(unittest.TestCase):
+    def test_local_user_has_local_backend(self):
+        with TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            user_id = store.create_user(
+                email="local@example.com",
+                password_hash=hash_password("password"),
+            )
+            user = store.get_user_by_id(user_id)
+            self.assertEqual(user["auth_backend"], "local")
+
+    def test_ldap_user_has_ldap_backend(self):
+        with TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            user_id = store.create_user(
+                email="ldap@example.com",
+                password_hash="!",
+                auth_backend="ldap",
+            )
+            user = store.get_user_by_id(user_id)
+            self.assertEqual(user["auth_backend"], "ldap")
+
+    def test_get_user_by_email_includes_auth_backend(self):
+        with TemporaryDirectory() as tmp:
+            store = _store(tmp)
+            store.create_user(
+                email="user@example.com",
+                password_hash="!",
+                auth_backend="ldap",
+            )
+            user = store.get_user_by_email("user@example.com")
+            self.assertEqual(user["auth_backend"], "ldap")

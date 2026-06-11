@@ -323,6 +323,13 @@ class SQLiteStateStore:
                 connection.execute("ALTER TABLE users ADD COLUMN totp_recovery_json TEXT")
         except Exception:
             pass
+        try:
+            with self._lock, self._connection() as connection:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN auth_backend TEXT NOT NULL DEFAULT 'local'"
+                )
+        except Exception:
+            pass
 
     def create_job(
         self,
@@ -554,6 +561,7 @@ class SQLiteStateStore:
         password_hash: str,
         is_admin: bool = False,
         role: str = "operator",
+        auth_backend: str = "local",
     ) -> str:
         user_id = str(uuid.uuid4())
         now = _utcnow_iso()
@@ -561,10 +569,10 @@ class SQLiteStateStore:
         with self._lock, self._connection() as connection:
             connection.execute(
                 """
-                INSERT INTO users (id, email, password_hash, is_admin, role, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO users (id, email, password_hash, is_admin, role, created_at, auth_backend)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (user_id, email.lower().strip(), password_hash, 1 if is_admin else 0, effective_role, now),
+                (user_id, email.lower().strip(), password_hash, 1 if is_admin else 0, effective_role, now, auth_backend),
             )
         return user_id
 
