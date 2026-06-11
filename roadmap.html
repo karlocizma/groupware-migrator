@@ -160,6 +160,7 @@
         <div class="foundation-item">Structured audit events + JSON/CSV reports</div>
         <div class="foundation-item">Form state persistence · Mobile responsive UI</div>
         <div class="foundation-item">Provider presets (Gmail, M365, Yahoo, Zoho)</div>
+        <div class="foundation-item">HTML email notifications (SMTP, per-user opt-in)</div>
       </div>
     </div>
 
@@ -480,8 +481,8 @@
             <div class="feature">
               <div class="feature-icon">📧</div>
               <div class="feature-content">
-                <div class="feature-name">Email notifications <span class="tag should">should</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred — SMTP required)</span></div>
-                <div class="feature-detail">Optional SMTP config for completion/failure emails to the job owner. Webhooks cover the same use case in the meantime.</div>
+                <div class="feature-name">Email notifications <span class="tag shipped">✓ shipped</span></div>
+                <div class="feature-detail">SMTP-based HTML emails on job completion, failure, or cancellation. Per-user opt-in toggles. Inline-styled dark-theme template with stats card. Admin SMTP test endpoint.</div>
               </div>
             </div>
           </div>
@@ -705,7 +706,6 @@
       <div class="defer-list">
         <div class="defer-item"><strong>SAML 2.0 / OIDC SSO</strong> — Infrastructure exists; waiting on IdP selection (Okta, Auth0, Keycloak).</div>
         <div class="defer-item"><strong>LDAP / Active Directory bind</strong> — Needs a live LDAP server and org-specific schema decisions.</div>
-        <div class="defer-item"><strong>Email notifications (SMTP)</strong> — Webhooks cover the same use case; email added once SMTP is wired in.</div>
         <div class="defer-item"><strong>Plugin / connector SDK</strong> — Base classes are ready; packaging and docs story missing.</div>
         <div class="defer-item"><strong>Prometheus metrics endpoint</strong> — Useful for production monitoring; straightforward to add when needed.</div>
       </div>

@@ -49,6 +49,14 @@ ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=changeme ./start.sh
 | `PORT` | `8000` | Port for the web server (used by `start.sh`) |
 | `SHUTDOWN_DRAIN_TIMEOUT` | `30` | Seconds to wait for running jobs to finish before forced shutdown |
 | `VAULT_KEY` | — | 32-byte URL-safe base64 key for encrypting scheduled job credentials at rest. Generate: `python3 -c "import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b'=').decode())"` |
+| `SMTP_HOST` | — | Hostname of the SMTP server. Email notifications are disabled when absent. |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_USER` | — | SMTP auth username |
+| `SMTP_PASSWORD` | — | SMTP auth password |
+| `SMTP_FROM` | `SMTP_USER` | Sender address shown in email clients |
+| `SMTP_TLS` | `starttls` | TLS mode: `starttls` \| `ssl` \| `none` |
+| `SMTP_TIMEOUT` | `10` | Seconds before SMTP connection timeout |
+| `SITE_URL` | — | Base URL used in email "View job" links (e.g. `https://migrate.example.com`) |
 
 ## CLI usage
 
@@ -105,6 +113,9 @@ All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bea
 | `POST` | `/auth/totp/confirm` | Confirm setup with a live TOTP code |
 | `POST` | `/auth/totp/disable` | Disable 2FA (requires current password) |
 | `GET` | `/auth/totp/status` | Check whether 2FA is enabled |
+| `GET` | `/auth/notifications` | Get your email notification preferences |
+| `PATCH` | `/auth/notifications` | Update your email notification preferences |
+| `POST` | `/api/admin/smtp/test` | Send a test email to verify SMTP config (admin only) |
 
 ### Jobs
 

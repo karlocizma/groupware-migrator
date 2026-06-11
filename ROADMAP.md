@@ -28,6 +28,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | Ops | Docker + docker-compose, nginx guide, SQLite backup/restore CLI |
 | API | REST API versioned at both `/api/*` and `/api/v1/*` |
 | UI | Dark-glass dashboard, login page, admin panel, schedules page, org page |
+| Email | SMTP-based HTML email notifications per-user opt-in on job completion, failure, cancellation |
 
 ---
 
@@ -151,7 +152,6 @@ These were planned but require external services or a separate integration phase
 |---|---|
 | **SAML 2.0 / OIDC SSO** | Infrastructure groundwork exists; waiting on IdP selection (Okta, Auth0, Keycloak) |
 | **LDAP / Active Directory bind** | Needs a live LDAP server and org-specific schema decisions |
-| **Email notifications (SMTP)** | Webhooks cover the same use case; add once SMTP is configured |
 | **Plugin / connector SDK** | Connector base classes are ready; packaging and docs story missing |
 | **Prometheus metrics endpoint** | Straightforward to add when production monitoring is needed |
 
