@@ -2,18 +2,80 @@
 import { requestJSON } from "./api.js";
 import { withLoading } from "./main.js";
 
+// ─── Notification Preferences ───────────────────────────────────────────────
+
+async function loadNotificationPrefs(isAdmin) {
+  const loading = document.getElementById("notif-loading");
+  const unavailable = document.getElementById("notif-unavailable");
+  const prefs = document.getElementById("notif-prefs");
+  const smtpTest = document.getElementById("notif-smtp-test");
+  if (!loading) return;
+  try {
+    const data = await requestJSON("/auth/notifications");
+    loading.style.display = "none";
+    prefs.style.display = "";
+    document.getElementById("notif-completed").checked = !!data.on_completed;
+    document.getElementById("notif-failed").checked = !!data.on_failed;
+    document.getElementById("notif-cancelled").checked = !!data.on_cancelled;
+    if (isAdmin) smtpTest.style.display = "";
+  } catch (e) {
+    loading.style.display = "none";
+    unavailable.style.display = "";
+  }
+}
+
+async function saveNotificationPref() {
+  const feedback = document.getElementById("notif-feedback");
+  const payload = {
+    on_completed: document.getElementById("notif-completed").checked,
+    on_failed: document.getElementById("notif-failed").checked,
+    on_cancelled: document.getElementById("notif-cancelled").checked,
+  };
+  try {
+    await requestJSON("/auth/notifications", { method: "PATCH", body: JSON.stringify(payload) });
+    if (feedback) { feedback.textContent = "Saved."; feedback.className = "feedback ok"; setTimeout(() => { feedback.textContent = ""; }, 2000); }
+  } catch (e) {
+    if (feedback) { feedback.textContent = e.message; feedback.className = "feedback err"; }
+  }
+}
+
+function bindNotifHandlers(isAdmin) {
+  ["notif-completed", "notif-failed", "notif-cancelled"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", saveNotificationPref);
+  });
+  if (isAdmin) {
+    const btn = document.getElementById("notif-test-btn");
+    if (btn) btn.addEventListener("click", async () => {
+      const fb = document.getElementById("notif-test-feedback");
+      btn.disabled = true;
+      try {
+        const data = await requestJSON("/api/admin/smtp/test", { method: "POST" });
+        if (fb) { fb.textContent = `Test email sent to ${data.sent_to}`; fb.className = "feedback ok"; }
+      } catch (e) {
+        if (fb) { fb.textContent = e.message; fb.className = "feedback err"; }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+}
+
 async function bootstrap() {
+  let isAdmin = false;
   try {
     const me = await requestJSON("/auth/me");
-    if (me.is_admin) {
+    isAdmin = !!me.is_admin;
+    if (isAdmin) {
       const link = document.getElementById("admin-link");
       if (link) link.style.display = "";
     }
   } catch (_) {}
-  await Promise.all([loadSchedules(), loadWebhooks(), loadTotpStatus()]);
+  await Promise.all([loadSchedules(), loadWebhooks(), loadTotpStatus(), loadNotificationPrefs(isAdmin)]);
   bindScheduleForm();
   bindWebhookForm();
   bindTotpHandlers();
+  bindNotifHandlers(isAdmin);
 }
 
 // ─── Schedules ──────────────────────────────────────────────────────────────

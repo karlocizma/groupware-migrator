@@ -129,6 +129,28 @@
               <p id="totp-disable-feedback" class="feedback"></p>
             </div>
           </div>
+
+          <!-- Email Notification Preferences -->
+          <div class="dashboard-section">
+            <h2>Email Notifications</h2>
+            <div id="notif-unavailable" style="display:none">
+              <p class="helper-text" style="color:#fbbf24">Email notifications are not configured on this server. Ask your administrator to set <code>SMTP_HOST</code>.</p>
+            </div>
+            <div id="notif-prefs" style="display:none">
+              <p class="helper-text">Choose which job events send you an email.</p>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+                <label class="check"><input type="checkbox" id="notif-completed" /> Email me when a job <strong>completes successfully</strong></label>
+                <label class="check"><input type="checkbox" id="notif-failed" /> Email me when a job <strong>fails</strong></label>
+                <label class="check"><input type="checkbox" id="notif-cancelled" /> Email me when a job is <strong>cancelled</strong></label>
+              </div>
+              <p id="notif-feedback" class="feedback"></p>
+            </div>
+            <div id="notif-smtp-test" style="display:none;margin-top:10px">
+              <button id="notif-test-btn" class="btn secondary" style="font-size:0.83rem">Send test email to my address</button>
+              <p id="notif-test-feedback" class="feedback"></p>
+            </div>
+            <p id="notif-loading" style="color:#8892a4;font-size:0.85rem">Loading…</p>
+          </div>
         </aside>
       </section>
     </main>
