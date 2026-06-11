@@ -279,6 +279,18 @@ class SQLiteStateStore:
                     on_failed    INTEGER NOT NULL DEFAULT 0,
                     on_cancelled INTEGER NOT NULL DEFAULT 0
                 );
+                CREATE TABLE IF NOT EXISTS oidc_providers (
+                    id                 TEXT PRIMARY KEY,
+                    name               TEXT NOT NULL,
+                    client_id          TEXT NOT NULL,
+                    client_secret      TEXT NOT NULL,
+                    issuer             TEXT NOT NULL,
+                    discovery_url      TEXT NOT NULL DEFAULT '',
+                    scope              TEXT NOT NULL DEFAULT 'openid email profile',
+                    admin_claim        TEXT NOT NULL DEFAULT '',
+                    admin_claim_value  TEXT NOT NULL DEFAULT '',
+                    created_at         TEXT NOT NULL
+                );
                 """
             )
         # Idempotent migrations
@@ -1725,5 +1737,57 @@ class SQLiteStateStore:
         with self._lock, self._connection() as connection:
             cursor = connection.execute(
                 "DELETE FROM organizations WHERE id = ?", (org_id,)
+            )
+            return cursor.rowcount > 0
+
+    # ------------------------------------------------------------------
+    # OIDC provider management
+    # ------------------------------------------------------------------
+
+    def create_oidc_provider(
+        self,
+        *,
+        name: str,
+        client_id: str,
+        client_secret: str,
+        issuer: str,
+        discovery_url: str = "",
+        scope: str = "openid email profile",
+        admin_claim: str = "",
+        admin_claim_value: str = "",
+    ) -> str:
+        provider_id = uuid.uuid4().hex[:12]
+        with self._lock, self._connection() as connection:
+            connection.execute(
+                """INSERT INTO oidc_providers
+                   (id, name, client_id, client_secret, issuer,
+                    discovery_url, scope, admin_claim, admin_claim_value, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    provider_id, name, client_id, client_secret, issuer,
+                    discovery_url, scope, admin_claim, admin_claim_value,
+                    _utcnow_iso(),
+                ),
+            )
+        return provider_id
+
+    def list_oidc_providers(self) -> list[dict[str, Any]]:
+        with self._lock, self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM oidc_providers ORDER BY created_at"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_oidc_provider(self, provider_id: str) -> dict[str, Any] | None:
+        with self._lock, self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM oidc_providers WHERE id = ?", (provider_id,)
+            ).fetchone()
+        return dict(row) if row else None
+
+    def delete_oidc_provider(self, provider_id: str) -> bool:
+        with self._lock, self._connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM oidc_providers WHERE id = ?", (provider_id,)
             )
             return cursor.rowcount > 0

@@ -894,3 +894,12 @@ def get_provider_preset(provider_id: str) -> dict | None:
         if str(preset.get("id", "")).lower() == provider_id:
             return deepcopy(preset)
     return None
+
+
+# ---------------------------------------------------------------------------
+# IdP presets for OIDC/SSO configuration
+# ---------------------------------------------------------------------------
+
+def get_idp_presets() -> list[dict]:
+    from groupware_migrator.engine.oidc import IDP_PRESETS
+    return deepcopy(IDP_PRESETS)
