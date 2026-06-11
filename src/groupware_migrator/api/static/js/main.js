@@ -37,11 +37,12 @@ function withLoading(btn, loadingLabel, asyncFn) {
 
 function getSelectedWorkload() {
   const workload = $('workload')?.value || 'mail';
-  return workload === 'calendar' || workload === 'contacts' ? workload : 'mail';
+  const dav = ['calendar', 'contacts', 'tasks', 'notes'];
+  return dav.includes(workload) ? workload : 'mail';
 }
 
 function getDestinationProtocolForWorkload(workload) {
-  if (workload === 'calendar') return 'caldav';
+  if (workload === 'calendar' || workload === 'tasks' || workload === 'notes') return 'caldav';
   if (workload === 'contacts') return 'carddav';
   return 'imap';
 }
@@ -215,7 +216,7 @@ function syncProtocolWithWorkload() {
       sourceProtocolSelect.value = 'imap';
     }
     if (pop3DestinationField) pop3DestinationField.hidden = false;
-  } else if (workload === 'calendar') {
+  } else if (workload === 'calendar' || workload === 'tasks' || workload === 'notes') {
     sourceProtocolSelect.value = 'caldav';
     sourceProtocolSelect.disabled = true;
     if (pop3DestinationField) pop3DestinationField.hidden = true;
