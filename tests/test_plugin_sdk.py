@@ -93,3 +93,40 @@ class TestPluginRegistry(unittest.TestCase):
         r1 = get_registry()
         r2 = get_registry()
         self.assertIs(r1, r2)
+
+
+# ---------------------------------------------------------------------------
+# TestSDKPublicAPI
+# ---------------------------------------------------------------------------
+
+class TestSDKPublicAPI(unittest.TestCase):
+    def test_sdk_exports_source_connector(self):
+        from groupware_migrator.sdk import SourceConnector as SDKSource
+        from groupware_migrator.connectors.base import SourceConnector as BaseSource
+        self.assertIs(SDKSource, BaseSource)
+
+    def test_sdk_exports_destination_connector(self):
+        from groupware_migrator.sdk import DestinationConnector as SDKDest
+        from groupware_migrator.connectors.base import DestinationConnector as BaseDest
+        self.assertIs(SDKDest, BaseDest)
+
+    def test_sdk_exports_connection_config(self):
+        from groupware_migrator.sdk import ConnectionConfig as SDKConfig
+        from groupware_migrator.models.domain import ConnectionConfig as DomainConfig
+        self.assertIs(SDKConfig, DomainConfig)
+
+    def test_sdk_exports_source_item(self):
+        from groupware_migrator.sdk import SourceItem
+        self.assertIsNotNone(SourceItem)
+
+    def test_sdk_exports_source_message(self):
+        from groupware_migrator.sdk import SourceMessage
+        self.assertIsNotNone(SourceMessage)
+
+    def test_sdk_exports_collection_snapshot(self):
+        from groupware_migrator.sdk import CollectionSnapshot
+        self.assertIsNotNone(CollectionSnapshot)
+
+    def test_sdk_exports_mailbox_snapshot(self):
+        from groupware_migrator.sdk import MailboxSnapshot
+        self.assertIsNotNone(MailboxSnapshot)
