@@ -59,9 +59,15 @@
     .phase-number.p5 { background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.4); color: var(--orange); }
     .phase-number.p6 { background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.4); color: var(--accent2); }
     .phase-number.p7 { background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4); color: var(--yellow); }
+    .phase-number.p8  { background: rgba(34,211,238,0.12); border: 1px solid rgba(34,211,238,0.35); color: var(--cyan); }
+    .phase-number.p9  { background: rgba(108,143,255,0.12); border: 1px solid rgba(108,143,255,0.35); color: var(--accent); }
+    .phase-number.p10 { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.35); color: var(--green); }
+    .phase-number.p11 { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.35); color: var(--accent2); }
+    .phase-number.p12 { background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.35); color: var(--orange); }
     .phase-title { font-size: 1.15rem; font-weight: 600; }
     .phase-effort { margin-left: auto; font-size: 0.76rem; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
     .phase-shipped { margin-left: 8px; font-size: 0.72rem; font-weight: 700; color: var(--green); background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); padding: 3px 9px; border-radius: 20px; }
+    .phase-planned { margin-left: 8px; font-size: 0.72rem; font-weight: 700; color: var(--cyan); background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.25); padding: 3px 9px; border-radius: 20px; }
 
     .phase-body { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 
@@ -126,17 +132,18 @@
   <div class="container">
     <header>
       <h1>Groupware Migrator — Roadmap</h1>
-      <p>All seven phases are implemented. This document captures what was built, the architectural decisions made along the way, and what gaps remain for future work.</p>
+      <p>Seven phases shipped. Five more planned. This document captures what was built, the architectural decisions made along the way, and the full roadmap to complete groupware migration coverage.</p>
       <div class="meta">
         <div class="badge">As of <strong>June 2026</strong></div>
-        <div class="badge green">All 7 phases <strong>complete</strong></div>
-        <div class="badge">159 tests · all green</div>
+        <div class="badge green">Phases 1–7 <strong>complete</strong></div>
+        <div class="badge">Phases 8–12 <strong>planned</strong></div>
+        <div class="badge">235 tests · all green</div>
       </div>
     </header>
 
     <!-- What's shipped -->
     <div class="foundation">
-      <h2>All Phases Complete — What's Shipped</h2>
+      <h2>Phases 1–7 Complete — What's Shipped</h2>
       <div class="foundation-grid">
         <div class="foundation-item">IMAP / POP3 / CalDAV / CardDAV connectors</div>
         <div class="foundation-item">Background jobs + crash recovery</div>
@@ -160,6 +167,7 @@
         <div class="foundation-item">Structured audit events + JSON/CSV reports</div>
         <div class="foundation-item">Form state persistence · Mobile responsive UI</div>
         <div class="foundation-item">Provider presets (Gmail, M365, Yahoo, Zoho)</div>
+        <div class="foundation-item">German / DACH provider presets (GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet)</div>
         <div class="foundation-item">HTML email notifications (SMTP, per-user opt-in)</div>
         <div class="foundation-item">LDAP / Active Directory bind with auto-provisioning</div>
         <div class="foundation-item">Plugin / connector SDK — third-party connectors via entry points</div>
@@ -659,6 +667,227 @@
 
     <div class="section-spacer"></div>
 
+    <!-- ═══════════════════════════════ PLANNED PHASES ═══════════════════════════════ -->
+
+    <!-- Phase 8 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p8">8</div>
+        <div class="phase-title">Workload Completion &amp; Provider Coverage</div>
+        <span class="phase-planned">🔜 Planned</span>
+        <div class="phase-effort">~2–3 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Close the two most impactful <strong>feature gaps</strong>: Tasks and Notes workloads that the CalDAV infrastructure already supports, and deep coverage of the <strong>German / DACH market</strong> with first-class provider presets.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">New Workloads</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">✅</div>
+              <div class="feature-content">
+                <div class="feature-name">Tasks migration (VTODO) <span class="tag must">must</span></div>
+                <div class="feature-detail">CalDAV connector already handles VTODO components. Lift the deferred validation block in the runner and wire <code>WorkloadType.TASKS</code> through the engine.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📓</div>
+              <div class="feature-content">
+                <div class="feature-name">Notes migration (VJOURNAL) <span class="tag should">should</span></div>
+                <div class="feature-detail">Same plumbing as Tasks. VJOURNAL is the iCalendar component for journal entries and notes; supported by Nextcloud, mailbox.org, and OX App Suite.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">German / DACH Provider Presets <span class="tag shipped">✓ shipped</span></div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🇩🇪</div>
+              <div class="feature-content">
+                <div class="feature-name">GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS / 1&amp;1, Strato, Freenet</div>
+                <div class="feature-detail">Pre-filled IMAP/POP3 hosts, ports, and auth guidance. Posteo and mailbox.org also include CalDAV/CardDAV endpoints. All include German-language activation steps.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 9 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p9">9</div>
+        <div class="phase-title">Enterprise Protocol Connectors</div>
+        <span class="phase-planned">🔜 Planned</span>
+        <div class="phase-effort">~4–6 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Reach environments that can't be migrated over standard IMAP/CalDAV: <strong>Microsoft Exchange</strong> (EWS), the <strong>Microsoft Graph API</strong>, and the <strong>Nextcloud</strong> ecosystem dominant in self-hosted European deployments. All ship as first-party plugins installable alongside the core package.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Protocol Plugins</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🏢</div>
+              <div class="feature-content">
+                <div class="feature-name">Exchange EWS connector <span class="tag must">must</span></div>
+                <div class="feature-detail"><code>exchangelib</code>-based plugin (<code>groupware-migrator-ews</code>). Supports mail, calendar, contacts, and tasks from on-premises Exchange 2013+ and Exchange Online. Registers as protocol <code>ews</code> via entry points.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">☁️</div>
+              <div class="feature-content">
+                <div class="feature-name">Microsoft Graph API connector <span class="tag should">should</span></div>
+                <div class="feature-detail">Modern replacement for EWS targeting Microsoft 365. Uses Graph REST API for mail (messages/folders), calendar events, and contacts. OAuth2-only; supports application permissions for admin-driven bulk migration.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">☁️</div>
+              <div class="feature-content">
+                <div class="feature-name">Nextcloud connector <span class="tag should">should</span></div>
+                <div class="feature-detail">CalDAV/CardDAV with Nextcloud-specific principal discovery (<code>/.well-known/caldav</code>) and groupware metadata. Supports mail, calendar, contacts, tasks, and notes from Nextcloud Groupware.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🏛️</div>
+              <div class="feature-content">
+                <div class="feature-name">Kolab / OX App Suite connector <span class="tag could">could</span></div>
+                <div class="feature-detail">Open-source groupware platforms widely deployed in the DACH enterprise market. Both expose CalDAV/CardDAV with vendor-specific quirks addressable via the plugin layer.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 10 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p10">10</div>
+        <div class="phase-title">Observability &amp; Metrics</div>
+        <span class="phase-planned">🔜 Planned</span>
+        <div class="phase-effort">~1–2 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Production deployments need numbers, not just log lines. A <strong>Prometheus endpoint</strong> and pre-built Grafana dashboard give operators instant visibility into migration throughput and failure rates without custom instrumentation.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Metrics</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">📊</div>
+              <div class="feature-content">
+                <div class="feature-name">Prometheus <code>/metrics</code> endpoint <span class="tag must">must</span></div>
+                <div class="feature-detail">Counters: jobs started / completed / failed, items migrated, errors. Histograms: job duration, items-per-second. Gauges: active jobs, queue depth. Secured behind admin auth.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📈</div>
+              <div class="feature-content">
+                <div class="feature-name">Grafana dashboard template <span class="tag should">should</span></div>
+                <div class="feature-detail">Pre-built JSON dashboard shipped alongside the Docker image. Covers migration throughput, error rate, active jobs, and per-user activity panels.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">❤️</div>
+              <div class="feature-content">
+                <div class="feature-name">Health check enrichment <span class="tag could">could</span></div>
+                <div class="feature-detail"><code>/health/ready</code> reports DB latency, job queue depth, and scheduler heartbeat timestamp to enable fine-grained Kubernetes liveness tuning.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 11 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p11">11</div>
+        <div class="phase-title">SSO &amp; Enterprise Authentication</div>
+        <span class="phase-planned">🔜 Planned</span>
+        <div class="phase-effort">~3–4 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          Complete the enterprise auth stack started with LDAP. <strong>SAML 2.0</strong> and <strong>OIDC</strong> let organizations use their existing identity provider — Keycloak, Entra ID, Okta — with no additional user management overhead.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Federated Identity</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🔐</div>
+              <div class="feature-content">
+                <div class="feature-name">SAML 2.0 service provider <span class="tag must">must</span></div>
+                <div class="feature-detail"><code>pysaml2</code>-based SP. IdP metadata URL configured via env var. User provisioned from <code>NameID</code> / attribute assertions on first login, following the LDAP auto-provisioning pattern.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔑</div>
+              <div class="feature-content">
+                <div class="feature-name">OIDC / OAuth2 login flow <span class="tag must">must</span></div>
+                <div class="feature-detail">Authorization-code flow with PKCE. User email and display name sourced from <code>email</code> / <code>name</code> ID-token claims. Session handled by existing JWT+cookie infrastructure.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🏗️</div>
+              <div class="feature-content">
+                <div class="feature-name">IdP presets <span class="tag should">should</span></div>
+                <div class="feature-detail">Pre-filled discovery URLs for Keycloak, Okta, Auth0, and Microsoft Entra ID (Azure AD). Reduces configuration to client-id + client-secret.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 12 -->
+    <div class="phase">
+      <div class="phase-header">
+        <div class="phase-number p12">12</div>
+        <div class="phase-title">Scale &amp; Resilience</div>
+        <span class="phase-planned">🔜 Planned</span>
+        <div class="phase-effort">~6–8 weeks</div>
+      </div>
+      <div class="phase-body">
+        <div class="phase-desc">
+          For deployments that have grown beyond a single-process SQLite instance. <strong>PostgreSQL</strong> as an opt-in backend and a <strong>Redis-backed job queue</strong> for horizontal scale — without breaking any single-node deployments.
+        </div>
+        <div class="feature-group">
+          <div class="feature-group-title">Storage &amp; Scaling</div>
+          <div class="feature-list">
+            <div class="feature">
+              <div class="feature-icon">🐘</div>
+              <div class="feature-content">
+                <div class="feature-name">PostgreSQL backend <span class="tag should">should</span></div>
+                <div class="feature-detail">Opt-in via <code>DATABASE_URL</code>. Same schema through an SQLAlchemy Core adapter. SQLite remains the default; no forced migration for existing installs.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">⚖️</div>
+              <div class="feature-content">
+                <div class="feature-name">Horizontal scaling via Redis job queue <span class="tag could">could</span></div>
+                <div class="feature-detail">Multiple worker processes compete for jobs via a Redis-backed queue. Coordinator node stays thin. Requires PostgreSQL backend for shared state.</div>
+              </div>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">☁️</div>
+              <div class="feature-content">
+                <div class="feature-name">Cloud state export (S3 / GCS / Azure Blob) <span class="tag could">could</span></div>
+                <div class="feature-detail">Optional remote target for the backup/restore CLI. Enables automated nightly exports in cloud-native deployments without mounting a host volume.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-spacer"></div>
+
     <!-- Architecture decisions -->
     <div class="decisions">
       <h2>Architecture Decisions</h2>
@@ -701,28 +930,13 @@
       </div>
     </div>
 
-    <!-- Remaining gaps -->
-    <div class="defer-section" style="border-color:rgba(251,191,36,0.25);background:rgba(251,191,36,0.04)">
-      <h2 style="color:#fbbf24">Remaining Gaps — Deferred, Not Forgotten</h2>
-      <p style="font-size:0.88rem;color:#8892a4;margin-bottom:14px">These were planned but require external services or a separate integration phase.</p>
-      <div class="defer-list">
-        <div class="defer-item"><strong>SAML 2.0 / OIDC SSO</strong> — Infrastructure exists; waiting on IdP selection (Okta, Auth0, Keycloak).</div>
-        <div class="defer-item"><strong>Prometheus metrics endpoint</strong> — Useful for production monitoring; straightforward to add when needed.</div>
-      </div>
-    </div>
-
     <!-- Out of scope -->
     <div class="defer-section">
       <h2>Intentionally Out of Scope</h2>
       <div class="defer-list">
-        <div class="defer-item">PostgreSQL / MySQL backend</div>
-        <div class="defer-item">Tasks &amp; Notes workloads</div>
-        <div class="defer-item">Exchange EWS protocol</div>
         <div class="defer-item">Real-time push (WebSockets beyond SSE)</div>
         <div class="defer-item">Mobile apps</div>
         <div class="defer-item">Billing / subscription tiers</div>
-        <div class="defer-item">Horizontal scaling (multi-instance)</div>
-        <div class="defer-item">Cloud storage for state (S3, GCS)</div>
         <div class="defer-item">On-the-fly protocol conversion (IMAP→CalDAV)</div>
         <div class="defer-item">Full-text search across migrated content</div>
       </div>

@@ -1,6 +1,6 @@
 # Groupware Migrator — Roadmap
 
-> **All 7 phases complete** as of June 2026. 159 tests · all green.
+> **Phases 1–7 complete** as of June 2026. Phases 8–12 planned. 235 tests · all green.
 
 An interactive HTML version with full feature details is available at [`roadmap.html`](roadmap.html).
 
@@ -31,6 +31,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | Email | SMTP-based HTML email notifications per-user opt-in on job completion, failure, cancellation |
 | LDAP / AD | Active Directory / LDAP bind — coexisting auth backend with auto-provisioning |
 | Plugin SDK | Connector plugin system — third-party packages register new protocols via entry points |
+| Providers (DE) | German / DACH provider presets: GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet |
 
 ---
 
@@ -146,27 +147,64 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ---
 
-## Remaining Gaps — Deferred, Not Forgotten
+---
 
-These were planned but require external services or a separate integration phase:
+## Phase 8 — Workload Completion & Provider Coverage
 
-| Item | Blocker |
-|---|---|
-| **SAML 2.0 / OIDC SSO** | Infrastructure groundwork exists; waiting on IdP selection (Okta, Auth0, Keycloak) |
-| **Prometheus metrics endpoint** | Straightforward to add when production monitoring is needed |
+*~2–3 weeks · Close the biggest UX gaps*
+
+- **Tasks workload (VTODO)** — CalDAV connector already supports VTODO; lift the deferred validation block and wire runner support
+- **Notes workload (VJOURNAL)** — same plumbing, VJOURNAL component type
+- **German / DACH provider presets** ✅ — GMX, WEB.DE, T-Online (Telekom), Posteo, mailbox.org, IONOS / 1&1, Strato, Freenet
+
+---
+
+## Phase 9 — Enterprise Protocol Connectors
+
+*~4–6 weeks · Reach Exchange and Google Workspace environments*
+
+- **Exchange EWS connector** — `exchangelib`-based first-party plugin (`groupware-migrator-ews`); ships as an optional install
+- **Microsoft Graph API connector** — modern replacement for EWS; supports mail, calendar, contacts via Graph REST API
+- **Nextcloud connector** — Nextcloud Talk / Groupware; CalDAV/CardDAV with Nextcloud-specific discovery and file-share metadata
+- **Kolab / Roundcube connector** — open-source groupware popular in the DACH enterprise market
+
+---
+
+## Phase 10 — Observability & Metrics
+
+*~1–2 weeks · Production-grade visibility*
+
+- **Prometheus `/metrics` endpoint** — counters for jobs started/completed/failed, items migrated, error rates; histogram for job duration
+- **Grafana dashboard template** — pre-built JSON dashboard shipped alongside Docker image
+- **Health check enrichment** — `/health/ready` reports DB latency, job queue depth, scheduler heartbeat
+
+---
+
+## Phase 11 — SSO & Enterprise Authentication
+
+*~3–4 weeks · Federated identity for enterprise deployments*
+
+- **SAML 2.0 service provider** — `pysaml2`-based SP; IdP metadata URL in config; builds on LDAP auto-provisioning pattern
+- **OIDC / OAuth2 login flow** — authorization-code flow; user provisioned from `email` + `name` claims
+- **IdP presets** — Keycloak, Okta, Auth0, Microsoft Entra ID (Azure AD) with pre-filled discovery URLs
+
+---
+
+## Phase 12 — Scale & Resilience
+
+*~6–8 weeks · Break SQLite ceiling without rewriting the core*
+
+- **PostgreSQL backend** — opt-in via `DATABASE_URL`; same schema through an ORM adapter layer (SQLAlchemy Core); SQLite stays default
+- **Horizontal scaling** — Redis-backed job queue (`rq` or `celery`); multiple worker processes; coordinator node stays thin
+- **Cloud state export** — S3, GCS, Azure Blob as optional targets for backup/restore CLI
 
 ---
 
 ## Intentionally Out of Scope
 
-- PostgreSQL / MySQL backend
-- Tasks & Notes workloads
-- Exchange EWS protocol
 - Real-time push (WebSockets beyond SSE)
 - Mobile apps
 - Billing / subscription tiers
-- Horizontal scaling (multi-instance)
-- Cloud storage for state (S3, GCS)
 - On-the-fly protocol conversion (IMAP→CalDAV)
 - Full-text search across migrated content
 
