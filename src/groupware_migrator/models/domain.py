@@ -10,6 +10,7 @@ class SourceProtocol(StrEnum):
     POP3 = "pop3"
     CALDAV = "caldav"
     CARDDAV = "carddav"
+    MSGRAPH = "msgraph"
 
 
 class DestinationProtocol(StrEnum):
@@ -164,8 +165,8 @@ def _validate_workload_protocols(
     if source_protocol not in set(SourceProtocol) or destination_protocol not in set(DestinationProtocol):
         return
     if workload is WorkloadType.MAIL:
-        if source_protocol not in {SourceProtocol.IMAP, SourceProtocol.POP3}:
-            raise ValueError("Mail workload requires IMAP or POP3 source protocol.")
+        if source_protocol not in {SourceProtocol.IMAP, SourceProtocol.POP3, SourceProtocol.MSGRAPH}:
+            raise ValueError("Mail workload requires IMAP, POP3, or MS Graph source protocol.")
         if destination_protocol is not DestinationProtocol.IMAP:
             raise ValueError("Mail workload requires IMAP destination protocol.")
         return

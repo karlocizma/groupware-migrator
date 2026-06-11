@@ -881,6 +881,87 @@ _PROVIDER_PRESETS: list[dict] = [
             "reference_url": "https://email.freenet.de/hilfe/imap",
         },
     },
+    {
+        "id": "nextcloud",
+        "name": "Nextcloud",
+        "source_defaults": {
+            "caldav": _endpoint_defaults(
+                host="nextcloud.example.com/remote.php/dav",
+                port=443,
+                auth_mode="password",
+                oauth_token_url="",
+                oauth_scope="",
+            ),
+            "carddav": _endpoint_defaults(
+                host="nextcloud.example.com/remote.php/dav",
+                port=443,
+                auth_mode="password",
+                oauth_token_url="",
+                oauth_scope="",
+            ),
+        },
+        "destination_defaults": {
+            "caldav": _endpoint_defaults(
+                host="nextcloud.example.com/remote.php/dav",
+                port=443,
+                auth_mode="password",
+                oauth_token_url="",
+                oauth_scope="",
+            ),
+            "carddav": _endpoint_defaults(
+                host="nextcloud.example.com/remote.php/dav",
+                port=443,
+                auth_mode="password",
+                oauth_token_url="",
+                oauth_scope="",
+            ),
+        },
+        "auth_notes": [
+            "Use your Nextcloud username and password (or an app password from Settings → Security).",
+            "CalDAV path: https://{host}/remote.php/dav/calendars/{username}/",
+            "CardDAV path: https://{host}/remote.php/dav/addressbooks/users/{username}/",
+            "Replace 'nextcloud.example.com' with your Nextcloud server hostname.",
+        ],
+        "reference_url": "https://docs.nextcloud.com/server/latest/user_manual/en/groupware/index.html",
+    },
+    {
+        "id": "exchange_online",
+        "name": "Microsoft Exchange Online (Microsoft 365)",
+        "source_defaults": {
+            "msgraph": {
+                "host": "graph.microsoft.com",
+                "port": 443,
+                "use_ssl": True,
+                "auth_mode": "oauth2",
+                "oauth_token_url": "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
+                "oauth_scope": "https://graph.microsoft.com/Mail.Read offline_access",
+            },
+            "imap": _endpoint_defaults(
+                host="outlook.office365.com",
+                port=993,
+                auth_mode="oauth2",
+                oauth_token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+                oauth_scope="https://outlook.office.com/IMAP.AccessAsUser.All offline_access",
+            ),
+        },
+        "destination_defaults": {
+            "imap": _endpoint_defaults(
+                host="outlook.office365.com",
+                port=993,
+                auth_mode="oauth2",
+                oauth_token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+                oauth_scope="https://outlook.office.com/IMAP.AccessAsUser.All offline_access",
+            ),
+        },
+        "auth_notes": [
+            "Use modern auth (OAuth2) — basic auth is disabled on Microsoft 365.",
+            "Register an app in Azure Portal → Microsoft Entra ID → App registrations.",
+            "Grant Mail.Read (or IMAP.AccessAsUser.All) permission and issue a token.",
+            "For MS Graph source: set auth_mode=oauth2 and provide oauth_access_token or refresh credentials.",
+            "Replace {tenant_id} in oauth_token_url with your Azure AD tenant ID.",
+        ],
+        "reference_url": "https://learn.microsoft.com/en-us/exchange/client-developer/exchange-web-services/start-using-web-services-in-exchange",
+    },
 ]
 
 
