@@ -201,3 +201,82 @@ class TestDomainModelChanges(unittest.TestCase):
                 "destination": _dst_payload("imap"),
                 "workload": "mail",
             })
+
+
+from unittest.mock import patch
+
+from groupware_migrator.connectors.factory import (
+    create_destination_connector,
+    create_source_connector,
+)
+
+
+# ---------------------------------------------------------------------------
+# TestFactoryWithPlugin
+# ---------------------------------------------------------------------------
+
+def _make_conn() -> ConnectionConfig:
+    return ConnectionConfig(host="h.example.com", port=443, username="u", password="p")
+
+
+def _make_source_ep(protocol: str) -> SourceEndpoint:
+    return SourceEndpoint(protocol=protocol, connection=_make_conn())
+
+
+def _make_dest_ep(protocol: str) -> DestinationEndpoint:
+    return DestinationEndpoint(protocol=protocol, connection=_make_conn())
+
+
+def _make_request(src_proto: str, dst_proto: str) -> MigrationRequest:
+    return MigrationRequest(
+        source=_make_source_ep(src_proto),
+        destination=_make_dest_ep(dst_proto),
+        workload=WorkloadType.MAIL,
+        options=MigrationOptions(),
+    )
+
+
+class TestFactoryWithPlugin(unittest.TestCase):
+    def _reg_with_source(self) -> PluginRegistry:
+        reg = PluginRegistry()
+        reg._source["fake_proto"] = _FakeSourceConnector
+        return reg
+
+    def _reg_with_destination(self) -> PluginRegistry:
+        reg = PluginRegistry()
+        reg._destination["fake_proto"] = _FakeDestinationConnector
+        return reg
+
+    def test_factory_uses_registered_source_plugin(self):
+        req = _make_request("fake_proto", "imap")
+        reg = self._reg_with_source()
+        with patch("groupware_migrator.connectors.factory.get_registry", return_value=reg):
+            connector = create_source_connector(req)
+        self.assertIsInstance(connector, _FakeSourceConnector)
+
+    def test_factory_uses_registered_destination_plugin(self):
+        req = _make_request("imap", "fake_proto")
+        reg = self._reg_with_destination()
+        with patch("groupware_migrator.connectors.factory.get_registry", return_value=reg):
+            connector = create_destination_connector(req)
+        self.assertIsInstance(connector, _FakeDestinationConnector)
+
+    def test_factory_raises_for_truly_unknown_source_protocol(self):
+        req = _make_request("no_such_proto", "imap")
+        reg = PluginRegistry()
+        with patch("groupware_migrator.connectors.factory.get_registry", return_value=reg):
+            with self.assertRaises(ValueError):
+                create_source_connector(req)
+
+    def test_factory_raises_for_truly_unknown_destination_protocol(self):
+        req = _make_request("imap", "no_such_proto")
+        reg = PluginRegistry()
+        with patch("groupware_migrator.connectors.factory.get_registry", return_value=reg):
+            with self.assertRaises(ValueError):
+                create_destination_connector(req)
+
+    def test_builtin_source_connectors_unaffected(self):
+        req = _make_request("imap", "imap")
+        from groupware_migrator.connectors.imap import ImapSourceConnector
+        connector = create_source_connector(req)
+        self.assertIsInstance(connector, ImapSourceConnector)

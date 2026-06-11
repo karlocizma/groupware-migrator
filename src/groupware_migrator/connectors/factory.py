@@ -9,26 +9,33 @@ from groupware_migrator.connectors.dav import (
 )
 from groupware_migrator.connectors.imap import ImapDestinationConnector, ImapSourceConnector
 from groupware_migrator.connectors.pop3 import Pop3SourceConnector
+from groupware_migrator.engine.plugin_registry import get_registry
 from groupware_migrator.models import DestinationProtocol, MigrationRequest, SourceProtocol
 
 
 def create_source_connector(request: MigrationRequest) -> SourceConnector:
-    if request.source.protocol is SourceProtocol.IMAP:
+    if request.source.protocol == SourceProtocol.IMAP:
         return ImapSourceConnector(request.source.connection)
-    if request.source.protocol is SourceProtocol.POP3:
+    if request.source.protocol == SourceProtocol.POP3:
         return Pop3SourceConnector(request.source.connection)
-    if request.source.protocol is SourceProtocol.CALDAV:
+    if request.source.protocol == SourceProtocol.CALDAV:
         return CalDavSourceConnector(request.source.connection)
-    if request.source.protocol is SourceProtocol.CARDDAV:
+    if request.source.protocol == SourceProtocol.CARDDAV:
         return CardDavSourceConnector(request.source.connection)
+    cls = get_registry().get_source(str(request.source.protocol))
+    if cls is not None:
+        return cls(request.source.connection)
     raise ValueError(f"Unsupported source protocol: {request.source.protocol}")
 
 
 def create_destination_connector(request: MigrationRequest) -> DestinationConnector:
-    if request.destination.protocol is DestinationProtocol.IMAP:
+    if request.destination.protocol == DestinationProtocol.IMAP:
         return ImapDestinationConnector(request.destination.connection)
-    if request.destination.protocol is DestinationProtocol.CALDAV:
+    if request.destination.protocol == DestinationProtocol.CALDAV:
         return CalDavDestinationConnector(request.destination.connection)
-    if request.destination.protocol is DestinationProtocol.CARDDAV:
+    if request.destination.protocol == DestinationProtocol.CARDDAV:
         return CardDavDestinationConnector(request.destination.connection)
+    cls = get_registry().get_destination(str(request.destination.protocol))
+    if cls is not None:
+        return cls(request.destination.connection)
     raise ValueError(f"Unsupported destination protocol: {request.destination.protocol}")
