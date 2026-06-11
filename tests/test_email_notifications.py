@@ -7,6 +7,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
+from fastapi.testclient import TestClient
+
+from groupware_migrator.api.app import create_app
 from groupware_migrator.engine.mailer import MailDeliveryManager
 from groupware_migrator.engine.state import SQLiteStateStore, hash_password
 
@@ -210,3 +213,62 @@ class TestMailDeliveryManagerSendTest(unittest.TestCase):
                     mock_smtp_cls.side_effect = ConnectionRefusedError("refused")
                     with self.assertRaises(ConnectionRefusedError):
                         mgr.send_test(to_address="admin@example.com")
+
+
+def _authed_client(app, email="user@example.com", password="password123") -> TestClient:
+    client = TestClient(app, raise_server_exceptions=True)
+    resp = client.post("/auth/login", json={"email": email, "password": password})
+    assert resp.status_code == 200, resp.text
+    return client
+
+
+class TestNotificationPrefsAPI(unittest.TestCase):
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        db = str(Path(self._tmp.name) / "state.db")
+        self.app = create_app(state_db_path=db)
+        store: SQLiteStateStore = self.app.state.state_store
+        store.create_user(
+            email="user@example.com",
+            password_hash=hash_password("password123"),
+        )
+        self.client = _authed_client(self.app)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_get_defaults(self):
+        resp = self.client.get("/auth/notifications")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data["on_completed"])
+        self.assertFalse(data["on_failed"])
+        self.assertFalse(data["on_cancelled"])
+
+    def test_patch_updates_prefs(self):
+        resp = self.client.patch(
+            "/auth/notifications",
+            json={"on_completed": True, "on_failed": True, "on_cancelled": False},
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["on_completed"])
+        self.assertTrue(data["on_failed"])
+        self.assertFalse(data["on_cancelled"])
+
+    def test_patch_then_get_persists(self):
+        self.client.patch(
+            "/auth/notifications",
+            json={"on_completed": False, "on_failed": True, "on_cancelled": True},
+        )
+        resp = self.client.get("/auth/notifications")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data["on_completed"])
+        self.assertTrue(data["on_failed"])
+        self.assertTrue(data["on_cancelled"])
+
+    def test_requires_auth(self):
+        bare = TestClient(self.app, raise_server_exceptions=True)
+        resp = bare.get("/auth/notifications")
+        self.assertEqual(resp.status_code, 401)

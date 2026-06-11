@@ -49,6 +49,12 @@ class TotpDisablePayload(BaseModel):
     current_password: str
 
 
+class NotificationPrefsPayload(BaseModel):
+    on_completed: bool
+    on_failed: bool
+    on_cancelled: bool
+
+
 def _ttl_hours() -> int:
     return int(os.environ.get("JWT_TTL_HOURS", "8"))
 
@@ -234,5 +240,22 @@ def create_auth_router(state_store: SQLiteStateStore) -> APIRouter:
         if not user:
             raise HTTPException(status_code=404, detail="User not found.")
         return {"totp_enabled": bool(user.get("totp_enabled", 0))}
+
+    @router.get("/auth/notifications")
+    def get_notification_prefs(current_user: dict = Depends(require_user)) -> dict:
+        return state_store.get_notification_prefs(str(current_user["sub"]))
+
+    @router.patch("/auth/notifications")
+    def set_notification_prefs(
+        payload: NotificationPrefsPayload,
+        current_user: dict = Depends(require_user),
+    ) -> dict:
+        state_store.set_notification_prefs(
+            str(current_user["sub"]),
+            on_completed=payload.on_completed,
+            on_failed=payload.on_failed,
+            on_cancelled=payload.on_cancelled,
+        )
+        return state_store.get_notification_prefs(str(current_user["sub"]))
 
     return router
