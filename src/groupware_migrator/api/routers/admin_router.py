@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -117,5 +118,10 @@ def create_admin_router(
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"SMTP error: {exc}") from exc
         return {"ok": True, "sent_to": to_address}
+
+    @router.get("/ldap/status")
+    def ldap_status(_admin: dict = Depends(require_admin)) -> dict:
+        host = os.environ.get("LDAP_HOST", "")
+        return {"configured": bool(host), "host": host or None}
 
     return router

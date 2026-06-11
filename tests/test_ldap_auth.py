@@ -340,3 +340,42 @@ class TestLDAPGuards(unittest.TestCase):
             json={"current_password": "localpass", "new_password": "newpass123"},
         )
         self.assertEqual(resp2.status_code, 200)
+
+
+class TestLDAPStatusEndpoint(unittest.TestCase):
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        db = str(Path(self._tmp.name) / "state.db")
+        self.app = create_app(state_db_path=db)
+        store: SQLiteStateStore = self.app.state.state_store
+        store.create_user(
+            email="admin@example.com",
+            password_hash=hash_password("adminpass"),
+            is_admin=True,
+        )
+        self.client = _authed_client(self.app, "admin@example.com", "adminpass")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_returns_configured_true_when_host_set(self):
+        with patch.dict(os.environ, {"LDAP_HOST": "ldap.corp.example"}):
+            resp = self.client.get("/api/admin/ldap/status")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["configured"])
+        self.assertEqual(data["host"], "ldap.corp.example")
+
+    def test_returns_configured_false_when_no_host(self):
+        env = {k: v for k, v in os.environ.items() if k != "LDAP_HOST"}
+        with patch.dict(os.environ, env, clear=True):
+            resp = self.client.get("/api/admin/ldap/status")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data["configured"])
+        self.assertIsNone(data["host"])
+
+    def test_requires_admin(self):
+        client = TestClient(self.app)
+        resp = client.get("/api/admin/ldap/status")
+        self.assertEqual(resp.status_code, 401)

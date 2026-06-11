@@ -19,6 +19,7 @@ from groupware_migrator.api.routers.providers import create_providers_router
 from groupware_migrator.api.routers.scheduler_router import create_scheduler_router
 from groupware_migrator.api.routers.webhooks_router import create_webhooks_router
 from groupware_migrator.engine.background import BackgroundJobManager
+from groupware_migrator.engine.ldap_auth import LDAPAuthBackend
 from groupware_migrator.engine.mailer import MailDeliveryManager
 from groupware_migrator.engine.runner import MigrationRunner
 from groupware_migrator.engine.scheduler import SchedulerThread
@@ -73,6 +74,7 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     runner = MigrationRunner(state_store=state_store)
     webhook_manager = WebhookDeliveryManager(state_store)
     mail_manager = MailDeliveryManager(state_store)
+    ldap_backend = LDAPAuthBackend()
     background_jobs = BackgroundJobManager(
         state_store=state_store,
         runner=runner,
@@ -127,6 +129,7 @@ def create_app(*, state_db_path: str = "data/state.db") -> FastAPI:
     app.state.jwt_secret = jwt_secret
     app.state.webhook_manager = webhook_manager
     app.state.mail_manager = mail_manager
+    app.state.ldap_backend = ldap_backend
     app.state.scheduler = scheduler
 
     @app.middleware("http")
