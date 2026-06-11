@@ -1,13 +1,10 @@
 name: CI
 on:
-  push:
-    branches: [main]
   schedule:
     - cron: '0 2 * * *'
 
 jobs:
   security-scan:
-    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +19,7 @@ jobs:
         run: strix -n -t ./ --scan-mode quick
 
   release:
-    if: github.event_name == 'push'
+    needs: security-scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
