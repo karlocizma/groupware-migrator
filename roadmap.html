@@ -67,7 +67,7 @@
     .phase-title { font-size: 1.15rem; font-weight: 600; }
     .phase-effort { margin-left: auto; font-size: 0.76rem; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
     .phase-shipped { margin-left: 8px; font-size: 0.72rem; font-weight: 700; color: var(--green); background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); padding: 3px 9px; border-radius: 20px; }
-    .phase-planned { margin-left: 8px; font-size: 0.72rem; font-weight: 700; color: var(--cyan); background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.25); padding: 3px 9px; border-radius: 20px; }
+    .deferred-note { font-size: 0.75rem; color: var(--yellow); font-style: italic; margin-left: 4px; }
 
     .phase-body { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 
@@ -175,6 +175,9 @@
         <div class="foundation-item">OIDC SSO — Keycloak, Okta, Auth0, Entra ID, Google Workspace</div>
         <div class="foundation-item">MS Graph source connector — Exchange Online mail migration (OAuth2)</div>
         <div class="foundation-item">Nextcloud + Exchange Online provider presets</div>
+        <div class="foundation-item">PostgreSQL backend — opt-in via <code>DATABASE_URL</code></div>
+        <div class="foundation-item">Redis job queue — horizontal scaling via <code>groupware-migrator-worker</code></div>
+        <div class="foundation-item">Admin data export — JSON dump + WAL-checkpointed SQLite download</div>
       </div>
     </div>
 
@@ -183,7 +186,7 @@
       <div class="phase-header">
         <div class="phase-number p1">1</div>
         <div class="phase-title">Backend Foundation</div>
-        <span class="phase-shipped">✓ Shipped</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">~2 weeks</div>
       </div>
       <div class="phase-body">
@@ -250,7 +253,7 @@
       <div class="phase-header">
         <div class="phase-number p2">2</div>
         <div class="phase-title">Auth &amp; Multi-tenancy</div>
-        <span class="phase-shipped">✓ Shipped</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">~2–3 weeks</div>
       </div>
       <div class="phase-body">
@@ -310,7 +313,7 @@
       <div class="phase-header">
         <div class="phase-number p3">3</div>
         <div class="phase-title">Frontend Quality</div>
-        <span class="phase-shipped">✓ Shipped</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">~1–2 weeks</div>
       </div>
       <div class="phase-body">
@@ -363,7 +366,7 @@
       <div class="phase-header">
         <div class="phase-number p4">4</div>
         <div class="phase-title">Production Hardening</div>
-        <span class="phase-shipped">✓ Shipped</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">~3–4 weeks</div>
       </div>
       <div class="phase-body">
@@ -456,7 +459,7 @@
       <div class="phase-header">
         <div class="phase-number p5">5</div>
         <div class="phase-title">Scheduling &amp; Automation</div>
-        <span class="phase-shipped">✓ Shipped</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">~4–5 weeks</div>
       </div>
       <div class="phase-body">
@@ -495,7 +498,7 @@
             <div class="feature">
               <div class="feature-icon">📧</div>
               <div class="feature-content">
-                <div class="feature-name">Email notifications <span class="tag shipped">✓ shipped</span></div>
+                <div class="feature-name">Email notifications</div>
                 <div class="feature-detail">SMTP-based HTML emails on job completion, failure, or cancellation. Per-user opt-in toggles. Inline-styled dark-theme template with stats card. Admin SMTP test endpoint.</div>
               </div>
             </div>
@@ -528,7 +531,7 @@
       <div class="phase-header">
         <div class="phase-number p6">6</div>
         <div class="phase-title">Admin Dashboard &amp; Observability</div>
-        <span class="phase-shipped">✓ Shipped</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">~3–4 weeks</div>
       </div>
       <div class="phase-body">
@@ -574,8 +577,8 @@
             <div class="feature">
               <div class="feature-icon">📈</div>
               <div class="feature-content">
-                <div class="feature-name">Prometheus metrics endpoint <span class="tag should">should</span> <span style="font-size:0.75rem;color:var(--yellow)">(not yet implemented)</span></div>
-                <div class="feature-detail"><code>GET /metrics</code> (Prometheus format) exposing active jobs, queue depth, jobs/hour, error rate, SQLite size.</div>
+                <div class="feature-name">Prometheus metrics endpoint</div>
+                <div class="feature-detail"><code>GET /metrics</code> (admin-only) — exports build_info, jobs by status, items migrated/skipped/failed, users, schedules, and batches. Shipped in Phase 10.</div>
               </div>
             </div>
           </div>
@@ -588,7 +591,7 @@
       <div class="phase-header">
         <div class="phase-number p7">7</div>
         <div class="phase-title">Enterprise Auth &amp; Multi-tenancy</div>
-        <span class="phase-shipped">✓ Shipped</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">~6–8 weeks</div>
       </div>
       <div class="phase-body">
@@ -608,14 +611,14 @@
             <div class="feature">
               <div class="feature-icon">🏢</div>
               <div class="feature-content">
-                <div class="feature-name">SAML 2.0 / OIDC SSO <span class="tag should">should</span> <span style="font-size:0.75rem;color:var(--yellow)">(deferred — IdP required)</span></div>
-                <div class="feature-detail">Infrastructure groundwork exists. Awaiting IdP selection (Okta, Auth0, Keycloak, etc.) and org-specific configuration.</div>
+                <div class="feature-name">SAML 2.0 / OIDC SSO <span class="deferred-note">(OIDC shipped in Phase 11; SAML deferred)</span></div>
+                <div class="feature-detail">OIDC authorization-code flow shipped in Phase 11 with IdP presets for Keycloak, Okta, Auth0, Entra ID, and Google. SAML 2.0 is deferred — OIDC covers the majority of enterprise IdPs.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">📁</div>
               <div class="feature-content">
-                <div class="feature-name">LDAP / Active Directory bind <span class="tag shipped">shipped</span></div>
+                <div class="feature-name">LDAP / Active Directory bind</div>
                 <div class="feature-detail">Bind LDAP for credential validation. Auto-provisions users on first login. Coexists with built-in password auth; set <code>LDAP_HOST</code> to enable.</div>
               </div>
             </div>
@@ -660,7 +663,7 @@
             <div class="feature">
               <div class="feature-icon">📦</div>
               <div class="feature-content">
-                <div class="feature-name">Plugin / connector SDK <span class="tag shipped">✓ shipped</span></div>
+                <div class="feature-name">Plugin / connector SDK</div>
                 <div class="feature-detail">Abstract <code>SourceConnector</code> / <code>DestinationConnector</code> interfaces published as <code>groupware_migrator.sdk</code>. Third-party connectors register new protocols via setuptools entry points. See <code>examples/sample_plugin/</code>.</div>
               </div>
             </div>
@@ -671,14 +674,14 @@
 
     <div class="section-spacer"></div>
 
-    <!-- ═══════════════════════════════ COMPLETED PHASES (8–11) ═══════════════════════════════ -->
+    <!-- ═══════════════════════════════ COMPLETED PHASES (8–12) ═══════════════════════════════ -->
 
     <!-- Phase 8 -->
     <div class="phase">
       <div class="phase-header">
         <div class="phase-number p8">8</div>
         <div class="phase-title">Workload Completion &amp; Provider Coverage</div>
-        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
@@ -689,23 +692,23 @@
           <div class="feature-group-title">New Workloads</div>
           <div class="feature-list">
             <div class="feature">
-              <div class="feature-icon">✅</div>
+              <div class="feature-icon">☑️</div>
               <div class="feature-content">
-                <div class="feature-name">Tasks migration (VTODO) <span class="tag must">must</span></div>
+                <div class="feature-name">Tasks migration (VTODO)</div>
                 <div class="feature-detail">CalDAV connector already handles VTODO components. Lift the deferred validation block in the runner and wire <code>WorkloadType.TASKS</code> through the engine.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">📓</div>
               <div class="feature-content">
-                <div class="feature-name">Notes migration (VJOURNAL) <span class="tag should">should</span></div>
+                <div class="feature-name">Notes migration (VJOURNAL)</div>
                 <div class="feature-detail">Same plumbing as Tasks. VJOURNAL is the iCalendar component for journal entries and notes; supported by Nextcloud, mailbox.org, and OX App Suite.</div>
               </div>
             </div>
           </div>
         </div>
         <div class="feature-group">
-          <div class="feature-group-title">German / DACH Provider Presets <span class="tag shipped">✓ shipped</span></div>
+          <div class="feature-group-title">German / DACH Provider Presets</div>
           <div class="feature-list">
             <div class="feature">
               <div class="feature-icon">🇩🇪</div>
@@ -724,12 +727,12 @@
       <div class="phase-header">
         <div class="phase-number p9">9</div>
         <div class="phase-title">Enterprise Protocol Connectors</div>
-        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
         <div class="phase-desc">
-          Reach environments that can't be migrated over standard IMAP/CalDAV: <strong>Microsoft Exchange</strong> (EWS), the <strong>Microsoft Graph API</strong>, and the <strong>Nextcloud</strong> ecosystem dominant in self-hosted European deployments. All ship as first-party plugins installable alongside the core package.
+          Reach environments that can't be migrated over standard IMAP/CalDAV. <strong>Microsoft Graph API</strong> connector ships for Exchange Online; <strong>Nextcloud</strong> and <strong>Exchange Online</strong> provider presets added. EWS connector deferred — Microsoft has deprecated EWS in favour of Graph.
         </div>
         <div class="feature-group">
           <div class="feature-group-title">Protocol Plugins</div>
@@ -737,29 +740,29 @@
             <div class="feature">
               <div class="feature-icon">🏢</div>
               <div class="feature-content">
-                <div class="feature-name">Exchange EWS connector <span class="tag must">must</span></div>
-                <div class="feature-detail"><code>exchangelib</code>-based plugin (<code>groupware-migrator-ews</code>). Supports mail, calendar, contacts, and tasks from on-premises Exchange 2013+ and Exchange Online. Registers as protocol <code>ews</code> via entry points.</div>
+                <div class="feature-name">Exchange EWS connector <span class="deferred-note">(deferred — EWS deprecated by Microsoft)</span></div>
+                <div class="feature-detail">Microsoft deprecated EWS for Exchange Online; modern workloads use MS Graph. On-premises Exchange ≤2016 without Graph access is the remaining EWS use case.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">☁️</div>
               <div class="feature-content">
-                <div class="feature-name">Microsoft Graph API connector <span class="tag should">should</span></div>
+                <div class="feature-name">Microsoft Graph API connector</div>
                 <div class="feature-detail">Modern replacement for EWS targeting Microsoft 365. Uses Graph REST API for mail (messages/folders), calendar events, and contacts. OAuth2-only; supports application permissions for admin-driven bulk migration.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">☁️</div>
               <div class="feature-content">
-                <div class="feature-name">Nextcloud connector <span class="tag should">should</span></div>
+                <div class="feature-name">Nextcloud provider preset</div>
                 <div class="feature-detail">CalDAV/CardDAV with Nextcloud-specific principal discovery (<code>/.well-known/caldav</code>) and groupware metadata. Supports mail, calendar, contacts, tasks, and notes from Nextcloud Groupware.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">🏛️</div>
               <div class="feature-content">
-                <div class="feature-name">Kolab / OX App Suite connector <span class="tag could">could</span></div>
-                <div class="feature-detail">Open-source groupware platforms widely deployed in the DACH enterprise market. Both expose CalDAV/CardDAV with vendor-specific quirks addressable via the plugin layer.</div>
+                <div class="feature-name">Kolab / OX App Suite connector <span class="deferred-note">(deferred)</span></div>
+                <div class="feature-detail">Both expose CalDAV/CardDAV; can be reached today via the standard connectors. A dedicated plugin addressing vendor-specific quirks is deferred until a concrete customer request.</div>
               </div>
             </div>
           </div>
@@ -772,7 +775,7 @@
       <div class="phase-header">
         <div class="phase-number p10">10</div>
         <div class="phase-title">Observability &amp; Metrics</div>
-        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
+        <span class="phase-shipped">✅ Complete</span>
         <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
@@ -785,21 +788,21 @@
             <div class="feature">
               <div class="feature-icon">📊</div>
               <div class="feature-content">
-                <div class="feature-name">Prometheus <code>/metrics</code> endpoint <span class="tag must">must</span></div>
+                <div class="feature-name">Prometheus <code>/metrics</code> endpoint</div>
                 <div class="feature-detail">Counters: jobs started / completed / failed, items migrated, errors. Histograms: job duration, items-per-second. Gauges: active jobs, queue depth. Secured behind admin auth.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">📈</div>
               <div class="feature-content">
-                <div class="feature-name">Grafana dashboard template <span class="tag should">should</span></div>
-                <div class="feature-detail">Pre-built JSON dashboard shipped alongside the Docker image. Covers migration throughput, error rate, active jobs, and per-user activity panels.</div>
+                <div class="feature-name">Grafana dashboard template <span class="deferred-note">(deferred)</span></div>
+                <div class="feature-detail">Pre-built JSON dashboard for Grafana. Deferred — Prometheus endpoint is live and operators can build dashboards using the exposed metrics.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">❤️</div>
               <div class="feature-content">
-                <div class="feature-name">Health check enrichment <span class="tag could">could</span></div>
+                <div class="feature-name">Health check enrichment</div>
                 <div class="feature-detail"><code>/health/ready</code> reports DB latency, job queue depth, and scheduler heartbeat timestamp to enable fine-grained Kubernetes liveness tuning.</div>
               </div>
             </div>
@@ -813,12 +816,12 @@
       <div class="phase-header">
         <div class="phase-number p11">11</div>
         <div class="phase-title">SSO &amp; Enterprise Authentication</div>
-        <span class="tag shipped" style="margin-left:8px">✅ Complete</span>
-        <div class="phase-effort">~3–4 weeks</div>
+        <span class="phase-shipped">✅ Complete</span>
+        <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
         <div class="phase-desc">
-          Complete the enterprise auth stack started with LDAP. <strong>SAML 2.0</strong> and <strong>OIDC</strong> let organizations use their existing identity provider — Keycloak, Entra ID, Okta — with no additional user management overhead.
+          Complete the enterprise auth stack started with LDAP. <strong>OIDC authorization-code flow</strong> lets organizations use their existing identity provider — Keycloak, Entra ID, Okta — with no additional user management overhead. SAML 2.0 is deferred; OIDC covers the majority of enterprise SSO cases.
         </div>
         <div class="feature-group">
           <div class="feature-group-title">Federated Identity</div>
@@ -826,21 +829,21 @@
             <div class="feature">
               <div class="feature-icon">🔐</div>
               <div class="feature-content">
-                <div class="feature-name">SAML 2.0 service provider <span class="tag must">must</span></div>
-                <div class="feature-detail"><code>pysaml2</code>-based SP. IdP metadata URL configured via env var. User provisioned from <code>NameID</code> / attribute assertions on first login, following the LDAP auto-provisioning pattern.</div>
+                <div class="feature-name">SAML 2.0 service provider <span class="deferred-note">(deferred — OIDC covers the majority of enterprise IdPs)</span></div>
+                <div class="feature-detail">Deferred in favour of OIDC, which covers Keycloak, Okta, Auth0, Entra ID, and Google Workspace. Revisit when a customer requires SAML and cannot use OIDC.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">🔑</div>
               <div class="feature-content">
-                <div class="feature-name">OIDC / OAuth2 login flow <span class="tag must">must</span></div>
+                <div class="feature-name">OIDC / OAuth2 login flow</div>
                 <div class="feature-detail">Authorization-code flow with PKCE. User email and display name sourced from <code>email</code> / <code>name</code> ID-token claims. Session handled by existing JWT+cookie infrastructure.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">🏗️</div>
               <div class="feature-content">
-                <div class="feature-name">IdP presets <span class="tag should">should</span></div>
+                <div class="feature-name">IdP presets</div>
                 <div class="feature-detail">Pre-filled discovery URLs for Keycloak, Okta, Auth0, and Microsoft Entra ID (Azure AD). Reduces configuration to client-id + client-secret.</div>
               </div>
             </div>
@@ -854,8 +857,8 @@
       <div class="phase-header">
         <div class="phase-number p12">12</div>
         <div class="phase-title">Scale &amp; Resilience</div>
-        <span class="phase-complete">✅ Complete</span>
-        <div class="phase-date">June 2026</div>
+        <span class="phase-shipped">✅ Complete</span>
+        <div class="phase-effort">June 2026</div>
       </div>
       <div class="phase-body">
         <div class="phase-desc">
@@ -885,6 +888,13 @@
                 <div class="feature-detail"><code>GET /admin/backup/download</code> — WAL-checkpointed SQLite file download (returns 501 for PostgreSQL backend; use <code>pg_dump</code>). <code>GET /admin/export</code> — full JSON state dump covering all jobs, users, batches, audit events, and OIDC providers.</div>
               </div>
             </div>
+            <div class="feature">
+              <div class="feature-icon">☁️</div>
+              <div class="feature-content">
+                <div class="feature-name">Cloud backup targets (S3 / GCS / Azure Blob) <span class="deferred-note">(deferred)</span></div>
+                <div class="feature-detail">Optional remote target for backup/restore. Deferred — file download and <code>pg_dump</code> cover self-hosted deployments; cloud targets add significant dependency surface for the current user base.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -896,16 +906,16 @@
     <div class="decisions">
       <h2>Architecture Decisions</h2>
       <div class="decision"><span class="decision-key">Sequence</span><span class="decision-val">Foundation first — auth on top of well-structured code is easier to maintain long-term</span></div>
-      <div class="decision"><span class="decision-key">Auth model</span><span class="decision-val">Multi-user email + password (not SSO — avoids IdP dependency for early product)</span></div>
+      <div class="decision"><span class="decision-key">Auth model</span><span class="decision-val">Email + password, LDAP bind, and OIDC SSO — no forced IdP dependency; all backends coexist</span></div>
       <div class="decision"><span class="decision-key">Session storage</span><span class="decision-val">HttpOnly cookies, not localStorage — prevents XSS token theft</span></div>
       <div class="decision"><span class="decision-key">No bundler</span><span class="decision-val">ES modules are sufficient given the project's vanilla JS philosophy</span></div>
-      <div class="decision"><span class="decision-key">SQLite stays</span><span class="decision-val">Appropriate for self-hosted SaaS at this scale; no migration to a heavier engine needed</span></div>
-      <div class="decision"><span class="decision-key">Threading model</span><span class="decision-val">ThreadPoolExecutor for background jobs; no external queue until SQLite + threading demonstrably breaks</span></div>
+      <div class="decision"><span class="decision-key">Database</span><span class="decision-val">SQLite by default; PostgreSQL opt-in via <code>DATABASE_URL</code> — no forced migration for existing installs</span></div>
+      <div class="decision"><span class="decision-key">Concurrency</span><span class="decision-val">ThreadPoolExecutor by default; Redis job queue opt-in for horizontal scale via <code>RedisJobManager</code></span></div>
     </div>
 
     <!-- Guiding principles -->
     <div class="principles">
-      <h2>Guiding Principles for Future Development</h2>
+      <h2>Guiding Principles</h2>
       <div class="principles-grid">
         <div class="principle">
           <div class="principle-title">Local-first by default</div>
@@ -934,15 +944,64 @@
       </div>
     </div>
 
+    <!-- Deferred features -->
+    <div class="defer-section">
+      <h2>Deferred Features</h2>
+      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px">Planned but intentionally deferred. Each has a concrete trigger condition for revisiting.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:0.88rem">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:600">Feature</th>
+            <th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:600">Phase</th>
+            <th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:600">Reason deferred</th>
+            <th style="text-align:left;padding:8px 12px;color:var(--muted);font-weight:600">Revisit when</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 12px;font-weight:600">SAML 2.0</td>
+            <td style="padding:10px 12px;color:var(--muted)">11</td>
+            <td style="padding:10px 12px;color:var(--muted)">OIDC covers Keycloak, Okta, Auth0, Entra ID, Google — the vast majority of enterprise IdPs</td>
+            <td style="padding:10px 12px;color:var(--muted)">A customer requires SAML and cannot use OIDC</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 12px;font-weight:600">Exchange EWS connector</td>
+            <td style="padding:10px 12px;color:var(--muted)">9</td>
+            <td style="padding:10px 12px;color:var(--muted)">Microsoft deprecated EWS; MS Graph covers all modern Exchange Online workloads</td>
+            <td style="padding:10px 12px;color:var(--muted)">On-premises Exchange ≤2016 customer with no MS Graph access</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 12px;font-weight:600">Grafana dashboard template</td>
+            <td style="padding:10px 12px;color:var(--muted)">10</td>
+            <td style="padding:10px 12px;color:var(--muted)">Prometheus endpoint is live; operators can build dashboards from exported metrics</td>
+            <td style="padding:10px 12px;color:var(--muted)">Official Grafana Cloud integration or packaged monitoring stack</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 12px;font-weight:600">Cloud backup targets (S3 / GCS / Azure Blob)</td>
+            <td style="padding:10px 12px;color:var(--muted)">12</td>
+            <td style="padding:10px 12px;color:var(--muted)">File download and pg_dump cover self-hosted deployments; cloud targets add three new SDK dependencies</td>
+            <td style="padding:10px 12px;color:var(--muted)">Managed SaaS offering where operator cannot access the container filesystem</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px;font-weight:600">Kolab / OX App Suite connector</td>
+            <td style="padding:10px 12px;color:var(--muted)">9</td>
+            <td style="padding:10px 12px;color:var(--muted)">Both platforms are reachable today via standard CalDAV/CardDAV connectors</td>
+            <td style="padding:10px 12px;color:var(--muted)">A concrete customer request with vendor-specific quirks that standard connectors cannot handle</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- Out of scope -->
     <div class="defer-section">
       <h2>Intentionally Out of Scope</h2>
+      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:12px">Not planned for any phase. Re-opening requires a deliberate product decision.</p>
       <div class="defer-list">
-        <div class="defer-item">Real-time push (WebSockets beyond SSE)</div>
-        <div class="defer-item">Mobile apps</div>
-        <div class="defer-item">Billing / subscription tiers</div>
-        <div class="defer-item">On-the-fly protocol conversion (IMAP→CalDAV)</div>
-        <div class="defer-item">Full-text search across migrated content</div>
+        <div class="defer-item">Real-time push (WebSockets) — SSE streams cover the live progress use case</div>
+        <div class="defer-item">Mobile apps — migration workflow is desktop-initiated</div>
+        <div class="defer-item">Billing / subscription tiers — self-hosted product; pricing is outside this codebase</div>
+        <div class="defer-item">On-the-fly protocol conversion (IMAP→CalDAV) — workloads stay in their own protocol lane by design</div>
+        <div class="defer-item">Full-text search across migrated content — the engine is a pipe, not a store</div>
       </div>
     </div>
 

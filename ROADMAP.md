@@ -24,16 +24,15 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | Organizations | Multi-tenant workspaces with owner/admin/member roles |
 | Vault | Fernet encryption for scheduled job credentials (`VAULT_KEY`) |
 | Admin | User management, system stats, admin audit log, data retention cleanup |
-| Observability | Structured audit events, JSON/CSV report export |
+| Observability | Structured audit events, JSON/CSV report export, Prometheus `/metrics`, enriched `/health/ready` |
 | Ops | Docker + docker-compose, nginx guide, SQLite backup/restore CLI |
 | API | REST API versioned at both `/api/*` and `/api/v1/*` |
 | UI | Dark-glass dashboard, login page, admin panel, schedules page, org page |
-| Email | SMTP-based HTML email notifications per-user opt-in on job completion, failure, cancellation |
+| Email | SMTP-based HTML email notifications with per-user opt-in |
 | LDAP / AD | Active Directory / LDAP bind — coexisting auth backend with auto-provisioning |
 | Plugin SDK | Connector plugin system — third-party packages register new protocols via entry points |
 | Providers (DE) | German / DACH provider presets: GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet |
 | Tasks / Notes | VTODO and VJOURNAL workload types over CalDAV; full UI, validation, and runner support |
-| Observability | Prometheus metrics at `GET /metrics` (admin-only); enriched `/health/ready` with `db_latency_ms` |
 | SSO / OIDC | OIDC authorization-code flow; admin CRUD for providers; IdP presets for Keycloak, Okta, Auth0, Entra ID, Google |
 | MS Graph | Microsoft Graph API source connector for Exchange Online mail migration (OAuth2 + paged MIME download) |
 | Providers (Enterprise) | Nextcloud and Exchange Online provider presets with MS Graph and IMAP OAuth2 defaults |
@@ -45,7 +44,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ## Phase 1 — Backend Foundation ✅
 
-*~2 weeks · Clean the engine room before adding features*
+*Completed · ~2 weeks*
 
 - **Split `app.py` into FastAPI routers** — 640-line monolith → `routers/jobs.py`, `routers/batches.py`, `routers/providers.py`
 - **Pydantic request models** — Typed `JobRequest`, `BatchRequest`, `BatchPreflightRequest` on all POST endpoints
@@ -58,7 +57,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ## Phase 2 — Auth & Multi-tenancy ✅
 
-*~2–3 weeks · Safe to deploy for multiple users*
+*Completed · ~2–3 weeks*
 
 - **User model & admin bootstrap** — `users` table with bcrypt passwords; first admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` env vars
 - **JWT session management** — `HttpOnly; SameSite=Strict` cookies; `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`
@@ -70,7 +69,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ## Phase 3 — Frontend Quality ✅
 
-*~1–2 weeks · A product-grade UI that doesn't lose your work*
+*Completed · ~1–2 weeks*
 
 - **Split `app.js` into ES modules** — 1231-line monolith → `js/api.js`, `js/form.js`, `js/streams.js`, `js/jobs.js`, `js/batches.js`, `js/main.js`
 - **Form state persistence** — Host/port/workload/protocol/TLS/sync-mode saved to `localStorage`; passwords excluded
@@ -81,7 +80,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ## Phase 4 — Production Hardening ✅
 
-*~3–4 weeks · Deployable in real environments*
+*Completed · ~3–4 weeks*
 
 **Deployment**
 - Docker multi-stage image + `docker-compose.yml` with volume-mounted DB and env file
@@ -102,7 +101,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ## Phase 5 — Scheduling & Automation ✅
 
-*~4–5 weeks · Migrations on autopilot*
+*Completed · ~4–5 weeks*
 
 **Scheduled Jobs**
 - Cron expressions (`0 2 * * *`) and interval strings (`6h`, `30m`) stored in `scheduled_jobs` table
@@ -123,7 +122,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ## Phase 6 — Admin Dashboard & Observability ✅
 
-*~3–4 weeks · Visibility for administrators*
+*Completed · ~3–4 weeks*
 
 **Admin UI** (`/admin`)
 - User management: create, deactivate, reset passwords, view per-user job counts
@@ -137,17 +136,21 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ## Phase 7 — Enterprise Auth & Multi-tenancy ✅
 
-*~6–8 weeks · Enterprise authentication and tenant isolation*
+*Completed · ~6–8 weeks*
 
 **Authentication**
 - TOTP 2FA (Google Authenticator compatible): `GET /auth/totp/setup`, `POST /auth/totp/confirm`, `POST /auth/totp/disable`
 - Login step-up: returns `{"totp_required": true}` when 2FA is enabled and no code provided
 - 10 SHA-256-hashed recovery codes generated at TOTP enrollment
+- LDAP / Active Directory bind — coexisting with local auth; auto-provisions accounts on first login
+- SMTP email notifications — HTML emails on job completion, failure, and cancellation; per-user opt-in
+- Plugin / connector SDK — third-party packages register new protocols via Python entry points (`groupware_migrator.connectors`)
+- SAML 2.0 *(deferred — OIDC covers the majority of enterprise SSO use cases; shipped in Phase 11)*
 
 **Multi-tenancy**
 - `organizations` + `org_memberships` tables; creator auto-assigned `owner`
 - Roles within orgs: `owner`, `admin`, `member`
-- `RBAC`: `viewer` → `operator` → `admin` → `super_admin`; enforced via `fastapi.Depends`
+- RBAC: `viewer` → `operator` → `admin` → `super_admin`; enforced via `fastapi.Depends`
 
 **Vault & API**
 - Credential vault: Fernet encryption for scheduled job credentials; `VAULT_KEY` env var (32-byte base64)
@@ -155,15 +158,13 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ---
 
----
-
 ## Phase 8 — Workload Completion & Provider Coverage ✅
 
 *Completed June 2026*
 
-- **Tasks workload (VTODO)** ✅ — CalDAV source/destination; UI workload selector; 12 tests
-- **Notes workload (VJOURNAL)** ✅ — same runner path; VJOURNAL content type
-- **German / DACH provider presets** ✅ — GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet
+- **Tasks workload (VTODO)** — CalDAV source/destination; UI workload selector; 12 tests
+- **Notes workload (VJOURNAL)** — same runner path as Tasks; VJOURNAL content type
+- **German / DACH provider presets** — GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet
 
 ---
 
@@ -171,11 +172,10 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 *Completed June 2026*
 
-- **Microsoft Graph API connector** ✅ — OAuth2 bearer auth; paginated folder listing; raw MIME download; `SourceProtocol.MSGRAPH`
-- **Nextcloud provider preset** ✅ — CalDAV/CardDAV with `/remote.php/dav` paths and app-password auth notes
-- **Exchange Online provider preset** ✅ — MS Graph + IMAP OAuth2 defaults with Entra ID token URL templates
-- **Exchange EWS connector** — deferred; modern workloads use MS Graph instead
-- **Plugin SDK** ✅ — shipped in Phase 8; third-party connectors register via Python entry points
+- **Microsoft Graph API connector** — OAuth2 bearer auth; paginated folder listing; raw MIME download; `SourceProtocol.MSGRAPH`
+- **Nextcloud provider preset** — CalDAV/CardDAV with `/remote.php/dav` paths and app-password auth notes
+- **Exchange Online provider preset** — MS Graph + IMAP OAuth2 defaults with Entra ID token URL templates
+- **Exchange EWS connector** *(deferred — modern Exchange workloads use MS Graph; EWS is deprecated by Microsoft)*
 
 ---
 
@@ -183,9 +183,9 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 *Completed June 2026*
 
-- **Prometheus `GET /metrics`** ✅ — admin-only; build_info, jobs by status, items migrated/skipped/failed, users, schedules, batches
-- **Health check enrichment** ✅ — `/health/ready` returns `db_latency_ms` and `active_jobs`
-- **Extended `system_stats()`** ✅ — items_skipped_total, items_failed_total, jobs_cancelled, scheduled_jobs_total
+- **Prometheus `GET /metrics`** — admin-only; exports `build_info`, jobs by status, items migrated/skipped/failed, users, schedules, batches
+- **Health check enrichment** — `/health/ready` returns `db_latency_ms` and `active_jobs`
+- **Extended `system_stats()`** — adds `items_skipped_total`, `items_failed_total`, `jobs_cancelled`, `scheduled_jobs_total`
 
 ---
 
@@ -193,31 +193,46 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 *Completed June 2026*
 
-- **OIDC / OAuth2 authorization-code flow** ✅ — CSRF-protected start/callback; nonce HMAC signed with JWT_SECRET
-- **User provisioning** ✅ — first-login creates account; admin claim promotes to admin role
-- **IdP presets** ✅ — Keycloak, Okta, Auth0, Microsoft Entra ID (Azure AD), Google Workspace
-- **Admin CRUD** ✅ — `POST/GET/DELETE /admin/oidc/providers`; client_secret never returned in public listing
-- **SAML 2.0** — deferred; OIDC covers the majority of enterprise SSO use cases
+- **OIDC / OAuth2 authorization-code flow** — CSRF-protected start/callback; nonce HMAC signed with JWT_SECRET
+- **User provisioning** — first-login creates account; admin claim promotes to admin role
+- **IdP presets** — Keycloak, Okta, Auth0, Microsoft Entra ID (Azure AD), Google Workspace
+- **Admin CRUD** — `POST/GET/DELETE /admin/oidc/providers`; client_secret never returned in public listing
+- **SAML 2.0** *(deferred — OIDC covers the majority of enterprise SSO use cases)*
 
 ---
 
 ## Phase 12 — Scale & Resilience ✅
 
-*Complete — June 2026*
+*Completed June 2026*
 
 - **PostgreSQL backend** — opt-in via `DATABASE_URL`; `psycopg2`-backed `PostgresStateStore` inherits from SQLiteStateStore; SQL translated at call sites (`?`→`%s`, `INSERT OR IGNORE`→`ON CONFLICT DO NOTHING`); SQLite remains the default
 - **Horizontal scaling** — `RedisJobManager` drop-in for `BackgroundJobManager`; jobs pushed to a Redis LIST, cancellation via Redis key, `groupware-migrator-worker` CLI worker process; install with `pip install "groupware-migrator[redis]"`
 - **Data export** — `GET /admin/backup/download` (WAL-checkpointed SQLite download; 501 for PostgreSQL) and `GET /admin/export` (full JSON state dump)
+- **Cloud backup targets (S3 / GCS / Azure Blob)** *(deferred — file-based backup and pg_dump cover the current user base; cloud targets add significant dependency surface)*
+
+---
+
+## Deferred Features
+
+Items that were planned but intentionally deferred. Each has a concrete reason and a trigger condition for revisiting.
+
+| Feature | Originally Planned | Reason Deferred | Revisit When |
+|---|---|---|---|
+| **SAML 2.0** | Phase 7 / 11 | OIDC covers Keycloak, Okta, Auth0, Entra ID, Google — the vast majority of enterprise IdPs | A paying customer requires SAML and cannot use OIDC |
+| **Exchange EWS connector** | Phase 9 | Microsoft deprecated EWS; MS Graph covers all modern Exchange Online workloads | On-premises Exchange ≤2016 customer with no MS Graph access |
+| **Cloud backup targets** | Phase 12 | File download + `pg_dump` cover self-hosted deployments; cloud targets add three new SDKs | Managed SaaS offering where operator cannot access the container filesystem |
 
 ---
 
 ## Intentionally Out of Scope
 
-- Real-time push (WebSockets beyond SSE)
-- Mobile apps
-- Billing / subscription tiers
-- On-the-fly protocol conversion (IMAP→CalDAV)
-- Full-text search across migrated content
+These are not planned for any phase. Re-opening them requires a deliberate product decision.
+
+- **Real-time push (WebSockets)** — SSE streams cover the live progress use case without bidirectional complexity
+- **Mobile apps** — the migration workflow is desktop-initiated; there is no meaningful mobile use case
+- **Billing / subscription tiers** — self-hosted product; pricing is outside the scope of this codebase
+- **On-the-fly protocol conversion** (e.g. IMAP → CalDAV) — workloads stay in their own protocol lane by design
+- **Full-text search across migrated content** — the engine is a pipe, not a store; indexed search requires a separate search backend
 
 ---
 
@@ -242,8 +257,8 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | Decision | Choice |
 |---|---|
 | **Sequence** | Foundation first — auth on top of well-structured code is easier to maintain |
-| **Auth model** | Multi-user email + password (not SSO — avoids IdP dependency for early product) |
+| **Auth model** | Multi-user email + password + LDAP + OIDC; no forced IdP dependency |
 | **Session storage** | HttpOnly cookies, not localStorage — prevents XSS token theft |
 | **Frontend** | Vanilla JS ES modules — no bundler required |
-| **Database** | SQLite — appropriate for self-hosted SaaS at this scale |
-| **Concurrency** | ThreadPoolExecutor — no external queue until threading model breaks |
+| **Database** | SQLite default; PostgreSQL opt-in via `DATABASE_URL` |
+| **Concurrency** | ThreadPoolExecutor default; Redis job queue opt-in for horizontal scale |
