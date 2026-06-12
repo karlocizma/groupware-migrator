@@ -1,25 +1,33 @@
 # Groupware Migrator
 
-Local-first tool for migrating email, calendar, and contacts between servers. Runs as a web application or CLI. Supports IMAP, POP3, CalDAV, and CardDAV with resumable background jobs, CSV batch migration, and a live-streaming dashboard.
+Local-first tool for migrating email, calendar, contacts, tasks, and notes between servers. Runs as a web application or CLI. Supports IMAP, POP3, CalDAV, CardDAV, and Microsoft Graph with resumable background jobs, CSV batch migration, and a live-streaming dashboard.
 
 ## Features
 
-- **Workloads:** `mail` (IMAP/POP3 → IMAP), `calendar` (CalDAV → CalDAV), `contacts` (CardDAV → CardDAV)
+- **Workloads:** `mail` (IMAP/POP3/MS Graph → IMAP), `calendar` (CalDAV → CalDAV), `contacts` (CardDAV → CardDAV), `tasks` (VTODO over CalDAV), `notes` (VJOURNAL over CalDAV)
 - **Background jobs:** asynchronous execution with live SSE progress updates
 - **Batch migration:** CSV-driven multi-user waves with per-row overrides
 - **Incremental sync:** cursor-based delta sync; anchored to a completed base job or persisted cursors
 - **Preflight checks:** validates source/destination connectivity and plan readiness before execution
 - **Idempotency:** fingerprint-based duplicate prevention across runs
 - **Auth modes:** password and OAuth/XOAUTH2 (direct access token or refresh-token exchange)
-- **Provider presets:** Gmail, Microsoft 365, Yahoo, Zoho — auto-fill host/port/TLS/auth defaults
+- **Provider presets:** Gmail, Microsoft 365, Yahoo, Zoho, Nextcloud, Exchange Online; German/DACH providers: GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet
+- **MS Graph connector:** Exchange Online mail migration via Microsoft Graph API (OAuth2)
 - **Multi-user:** JWT session authentication, per-user job scoping, API key support
 - **Reports:** per-job structured audit events, JSON/CSV export
 - **Scheduling:** cron-style and interval-based recurring jobs (e.g. `0 2 * * *`, `6h`)
-- **Webhooks:** HMAC-SHA256-signed POST notifications on job completion/failure
+- **Webhooks:** HMAC-SHA256-signed POST notifications on job completion/failure/cancellation
+- **Email notifications:** SMTP-based HTML emails on job completion/failure/cancellation; per-user opt-in
 - **2FA:** TOTP two-factor authentication with recovery codes (Google Authenticator / Authy)
 - **RBAC:** four roles — `viewer`, `operator`, `admin`, `super_admin`
 - **Organizations:** group users into workspaces with owner/admin/member roles
 - **Credential vault:** optional AES encryption for scheduled job credentials (`VAULT_KEY`)
+- **LDAP / AD:** Active Directory bind; auto-provisions accounts on first login; coexists with local auth
+- **SSO / OIDC:** OIDC authorization-code flow; IdP presets for Keycloak, Okta, Auth0, Entra ID, Google
+- **Observability:** Prometheus metrics at `GET /metrics` (admin-only); enriched `/health/ready`
+- **Plugin SDK:** third-party connectors installed as Python packages via entry points
+- **PostgreSQL:** opt-in via `DATABASE_URL`; SQLite remains the default
+- **Redis job queue:** opt-in horizontal scaling via `groupware-migrator-worker` CLI
 
 ## Quick start
 
@@ -36,7 +44,94 @@ ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=changeme ./start.sh
 # 4. Open http://127.0.0.1:8000/login
 ```
 
-### Environment variables
+## Docker
+
+### docker-compose (recommended)
+
+```bash
+# 1. Create an env file
+cp .env.example .env   # or create it manually — see Environment variables below
+
+# 2. Build and start
+docker compose up -d
+
+# 3. Open http://localhost:8000/login
+```
+
+The container persists all state in `./data/state.db` (mounted as a volume). Logs are written to stdout and captured by Docker.
+
+### Docker CLI
+
+```bash
+# Build
+docker build -t groupware-migrator .
+
+# Run
+docker run -d \
+  --name groupware-migrator \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  -e ADMIN_EMAIL=admin@example.com \
+  -e ADMIN_PASSWORD=changeme \
+  -e JWT_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))") \
+  groupware-migrator
+```
+
+### docker-compose with PostgreSQL and Redis (horizontal scaling)
+
+```yaml
+# docker-compose.prod.yml
+services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://gm:secret@db:5432/groupware
+      REDIS_URL: redis://redis:6379
+    depends_on: [db, redis]
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: groupware-migrator-worker --redis-url redis://redis:6379
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://gm:secret@db:5432/groupware
+    depends_on: [db, redis]
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gm
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: groupware
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+  redis:
+    image: redis:7-alpine
+    volumes: [redisdata:/data]
+
+volumes:
+  pgdata:
+  redisdata:
+```
+
+### Environment file
+
+Create a `.env` file for `docker-compose`:
+
+```ini
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=changeme
+JWT_SECRET=<output of: python3 -c "import secrets; print(secrets.token_hex(32))">
+VAULT_KEY=<output of: python3 -c "import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b'=').decode())">
+COOKIE_SECURE=true
+SITE_URL=https://migrate.example.com
+```
+
+## Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -48,6 +143,8 @@ ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=changeme ./start.sh
 | `LOG_LEVEL` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `PORT` | `8000` | Port for the web server (used by `start.sh`) |
 | `SHUTDOWN_DRAIN_TIMEOUT` | `30` | Seconds to wait for running jobs to finish before forced shutdown |
+| `DATABASE_URL` | — | PostgreSQL connection string (`postgresql://user:pass@host:5432/db`). Uses SQLite when absent. |
+| `REDIS_URL` | `redis://localhost:6379` | Redis URL used by `groupware-migrator-worker`. Not needed for the default thread-based queue. |
 | `VAULT_KEY` | — | 32-byte URL-safe base64 key for encrypting scheduled job credentials at rest. Generate: `python3 -c "import secrets,base64; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b'=').decode())"` |
 | `SMTP_HOST` | — | Hostname of the SMTP server. Email notifications are disabled when absent. |
 | `SMTP_PORT` | `587` | SMTP port |
@@ -84,6 +181,11 @@ groupware-migrator backup --state-db /path/to/state.db --output /backup/state-$(
 # Restore from a backup
 groupware-migrator restore --from /path/to/backup.db
 groupware-migrator restore --from /path/to/backup.db --force  # overwrite existing db
+
+# Redis worker (for horizontal scaling with RedisJobManager)
+groupware-migrator-worker --redis-url redis://localhost:6379 --db-path data/state.db
+# or with PostgreSQL:
+DATABASE_URL=postgresql://user:pass@host/db groupware-migrator-worker --redis-url redis://localhost:6379
 ```
 
 ## Development
@@ -104,7 +206,7 @@ uvicorn groupware_migrator.api.app:create_app --factory --reload
 
 ## API reference
 
-All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bearer <api-key>`).
+All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bearer <api-key>`). All endpoints are also accessible at `/api/v1/*`.
 
 ### Auth
 
@@ -125,9 +227,9 @@ All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bea
 | `GET` | `/auth/totp/status` | Check whether 2FA is enabled |
 | `GET` | `/auth/notifications` | Get your email notification preferences |
 | `PATCH` | `/auth/notifications` | Update your email notification preferences |
-| `POST` | `/api/admin/smtp/test` | Send a test email to verify SMTP config (admin only) |
-| `GET` | `/api/admin/ldap/status` | Check whether LDAP is configured (admin only) |
-| `GET` | `/api/admin/plugins` | List installed connector plugins (admin only) |
+| `GET` | `/auth/oidc/providers` | List configured OIDC providers (public — for login page) |
+| `GET` | `/auth/oidc/{provider_id}/start` | Begin OIDC login flow (redirects to IdP) |
+| `GET` | `/auth/oidc/{provider_id}/callback` | OIDC callback (handles code exchange, issues session) |
 
 ### Jobs
 
@@ -195,7 +297,33 @@ All `/api/*` endpoints require authentication (JWT cookie or `Authorization: Bea
 | `DELETE` | `/api/orgs/{id}/members/{user_id}` | Remove a member |
 | `DELETE` | `/api/orgs/{id}` | Delete an org (admin only) |
 
-All `/api/*` endpoints are also accessible at `/api/v1/*` (versioned prefix).
+### Admin
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/admin/stats` | System statistics |
+| `GET` | `/api/admin/users` | List all users |
+| `PATCH` | `/api/admin/users/{id}` | Update user role or active state |
+| `POST` | `/api/admin/users/{id}/reset-password` | Reset a user's password |
+| `GET` | `/api/admin/audit-log` | Admin audit log |
+| `POST` | `/api/admin/cleanup` | Delete records older than N days |
+| `POST` | `/api/admin/smtp/test` | Send a test email to verify SMTP config |
+| `GET` | `/api/admin/ldap/status` | Check whether LDAP is configured |
+| `GET` | `/api/admin/plugins` | List installed connector plugins |
+| `GET` | `/api/admin/backup/download` | Download WAL-checkpointed SQLite file (SQLite only; 501 for PostgreSQL) |
+| `GET` | `/api/admin/export` | Export full state as JSON (jobs, users, batches, audit events, OIDC providers) |
+| `POST` | `/api/admin/oidc/providers` | Register an OIDC provider (admin only) |
+| `GET` | `/api/admin/oidc/providers` | List OIDC providers (admin only; includes client_secret) |
+| `DELETE` | `/api/admin/oidc/providers/{id}` | Remove an OIDC provider |
+| `GET` | `/api/admin/oidc/idp-presets` | List built-in IdP presets (Keycloak, Okta, Auth0, Entra ID, Google) |
+
+### Observability
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/metrics` | Prometheus metrics (admin-only) |
+| `GET` | `/health/live` | Liveness probe — always 200 |
+| `GET` | `/health/ready` | Readiness probe — checks DB; returns `db_latency_ms` and `active_jobs` |
 
 ## CSV batch format
 
@@ -218,41 +346,38 @@ groupware_migrator/
 │   ├── auth.py             # JWT, Depends: require_user/admin/operator/super_admin
 │   ├── rate_limit.py       # In-memory sliding-window login rate limiter
 │   ├── schemas.py          # Pydantic request models
-│   ├── routers/
-│   │   ├── auth_router.py  # /auth/* (login, TOTP, API keys, user management)
-│   │   ├── admin_router.py # /admin/* (stats, users, audit log, cleanup)
-│   │   ├── jobs.py         # /jobs/* endpoints
-│   │   ├── batches.py      # /batches/* endpoints
-│   │   ├── scheduler_router.py  # /schedules/* CRUD
-│   │   ├── webhooks_router.py   # /webhooks/* CRUD + delivery log
-│   │   ├── orgs_router.py       # /orgs/* CRUD + member management
-│   │   └── providers.py    # /providers endpoint
-│   └── static/
-│       ├── index.html      # Main dashboard
-│       ├── login.html      # Login page (TOTP step-up aware)
-│       ├── admin.html      # Admin dashboard
-│       ├── scheduler.html  # Schedules, webhooks, 2FA settings
-│       ├── orgs.html       # Organization management
-│       ├── styles.css
-│       └── js/
-│           ├── main.js     # Dashboard entry point (ES module)
-│           ├── admin.js    # Admin panel logic
-│           ├── scheduler.js # Schedules/webhooks/TOTP logic
-│           ├── api.js      # Fetch wrapper with 401 redirect
-│           └── form.js     # localStorage form persistence
+│   └── routers/
+│       ├── auth_router.py      # /auth/* (login, TOTP, API keys, user management)
+│       ├── admin_router.py     # /admin/* (stats, users, audit log, cleanup, backup, export)
+│       ├── jobs.py             # /jobs/* endpoints
+│       ├── batches.py          # /batches/* endpoints
+│       ├── scheduler_router.py # /schedules/* CRUD
+│       ├── webhooks_router.py  # /webhooks/* CRUD + delivery log
+│       ├── orgs_router.py      # /orgs/* CRUD + member management
+│       ├── oidc_router.py      # /auth/oidc/* SSO flow + /admin/oidc/* CRUD
+│       ├── metrics_router.py   # /metrics Prometheus endpoint
+│       └── providers.py        # /providers endpoint
 ├── connectors/
 │   ├── imap.py             # IMAP source + destination
 │   ├── pop3.py             # POP3 source
 │   ├── dav.py              # CalDAV + CardDAV (PROPFIND/GET/PUT/MKCOL)
+│   ├── graph.py            # Microsoft Graph API source (Exchange Online mail)
 │   ├── auth.py             # OAuth token resolution
-│   └── factory.py          # Protocol → connector dispatch
+│   └── factory.py          # Protocol → connector dispatch (+ plugin registry fallback)
 ├── engine/
 │   ├── state.py            # SQLiteStateStore; all persistence
-│   ├── background.py       # BackgroundJobManager (ThreadPoolExecutor + webhooks)
+│   ├── postgres_state.py   # PostgresStateStore (opt-in via DATABASE_URL) + create_state_store()
+│   ├── background.py       # BackgroundJobManager (ThreadPoolExecutor + webhooks + retry)
+│   ├── redis_jobs.py       # RedisJobManager — Redis LIST-based queue (opt-in)
+│   ├── rq_worker.py        # groupware-migrator-worker CLI entry point
 │   ├── runner.py           # MigrationRunner; item iteration → upsert
 │   ├── scheduler.py        # SchedulerThread; fires due cron/interval schedules
 │   ├── cron.py             # Minimal 5-field cron expression parser
 │   ├── webhooks.py         # WebhookDeliveryManager; HMAC-signed HTTP POST
+│   ├── mailer.py           # MailDeliveryManager; SMTP email notifications
+│   ├── ldap_auth.py        # LDAPAuthBackend; bind + auto-provision
+│   ├── oidc.py             # OIDCProviderConfig, HMAC state helpers, IdP presets
+│   ├── plugin_registry.py  # Entry-point-based connector plugin registry
 │   ├── vault.py            # Fernet credential encryption (VAULT_KEY)
 │   ├── planner.py          # MigrationPlan construction
 │   ├── preflight.py        # Connectivity + plan validation
@@ -265,13 +390,13 @@ groupware_migrator/
 └── cli.py                  # CLI entrypoint (+ backup/restore subcommands)
 ```
 
-### State store (SQLite)
+### State store
 
-All persistence goes through `SQLiteStateStore`. Key tables:
+All persistence goes through `SQLiteStateStore` (or `PostgresStateStore` when `DATABASE_URL` is set). Key tables:
 
 | Table | Purpose |
 |---|---|
-| `users` | Accounts with bcrypt hashes, `role`, `is_active`, TOTP columns |
+| `users` | Accounts with bcrypt hashes, `role`, `is_active`, TOTP columns, `auth_backend` |
 | `api_keys` | SHA-256-hashed API keys per user |
 | `jobs` | Migration jobs with status, counters, `user_id`, `priority`, `retry_count` |
 | `batches` | Batch waves with summary counters, `user_id` |
@@ -286,14 +411,17 @@ All persistence goes through `SQLiteStateStore`. Key tables:
 | `webhook_deliveries` | Delivery attempt log per webhook |
 | `organizations` | Multi-tenant workspaces |
 | `org_memberships` | User–org membership with owner/admin/member roles |
+| `notification_prefs` | Per-user email notification opt-in flags |
+| `oidc_providers` | Registered OIDC IdP configurations (client ID, secret, issuer) |
 
 ### Auth flow
 
 1. On first startup with no users, `ADMIN_EMAIL`/`ADMIN_PASSWORD` bootstrap the first admin account.
-2. `POST /auth/login` validates password (bcrypt), checks if account is active, handles TOTP if enabled, and issues a JWT in a `gm_session` HttpOnly cookie (8-hour TTL by default). Returns `{"totp_required": true}` if 2FA is enabled and `totp_code` is not provided.
-3. All `/api/*` routes require the cookie or an `Authorization: Bearer <api-key>` header.
-4. Role-based access: `viewer` (read-only), `operator` (start/cancel jobs), `admin` (user management), `super_admin` (org management, all admin actions).
-5. API keys are SHA-256 hashed in the database; the raw key is returned once on creation.
+2. `POST /auth/login` validates password (bcrypt) **or** delegates to LDAP when `LDAP_HOST` is set. Checks account active state, handles TOTP if enabled, issues a JWT in a `gm_session` HttpOnly cookie (8-hour TTL). Returns `{"totp_required": true}` if 2FA is enabled and `totp_code` is not provided.
+3. `GET /auth/oidc/{provider_id}/start` initiates OIDC authorization-code flow. After IdP redirect, `/callback` exchanges the code, validates the ID token, and provisions or updates the user account. The same session cookie is issued.
+4. All `/api/*` routes require the cookie or an `Authorization: Bearer <api-key>` header.
+5. Role-based access: `viewer` (read-only), `operator` (start/cancel jobs), `admin` (user management), `super_admin` (org management, all admin actions).
+6. API keys are SHA-256 hashed in the database; the raw key is returned once on creation.
 
 ## Plugin SDK
 
@@ -311,9 +439,10 @@ After `pip install my-package`, specify `"protocol": "myproto"` in migration con
 
 ## Notes
 
-- POP3 is source-only (destination POP3 is out of scope).
-- `tasks` and `notes` workloads are modeled but not executed.
+- POP3 is source-only; POP3 destination is out of scope.
+- `tasks` (VTODO) and `notes` (VJOURNAL) workloads are fully supported over CalDAV.
 - Job snapshots store credentials redacted; scheduled jobs store the full request (Fernet-encrypted if `VAULT_KEY` is set).
-- The `data/state.db` file is created automatically on first startup.
-- SAML/OIDC SSO is not implemented — this requires an external IdP (Okta, Auth0, Keycloak) and is left for a future integration phase.
-- LDAP / Active Directory bind is implemented; set `LDAP_HOST` to enable it alongside the built-in password auth.
+- The `data/state.db` file is created automatically on first startup. Switch to PostgreSQL by setting `DATABASE_URL`.
+- LDAP / Active Directory bind is enabled by setting `LDAP_HOST`. It coexists with local password auth.
+- OIDC SSO is configured via the admin UI (`/admin`) or `POST /api/admin/oidc/providers`. SAML 2.0 is not implemented — OIDC covers the majority of enterprise IdPs.
+- The MS Graph connector requires an Entra ID app registration with `Mail.Read` (or `Mail.ReadBasic`) permissions and an OAuth2 access token passed as `source_oauth_access_token`.
