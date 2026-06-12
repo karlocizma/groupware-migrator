@@ -27,9 +27,13 @@ dev = [
 postgres = [
   "psycopg2-binary>=2.9"
 ]
+redis = [
+  "redis>=5.0"
+]
 
 [project.scripts]
 groupware-migrator = "groupware_migrator.cli:main"
+groupware-migrator-worker = "groupware_migrator.engine.rq_worker:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

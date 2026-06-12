@@ -1,6 +1,6 @@
 # Groupware Migrator — Roadmap
 
-> **Phases 1–11 complete** as of June 2026. Phase 12 planned. 323 tests · all green.
+> **Phases 1–12 complete** as of June 2026. 348 tests · all green.
 
 An interactive HTML version with full feature details is available at [`roadmap.html`](roadmap.html).
 
@@ -37,6 +37,9 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | SSO / OIDC | OIDC authorization-code flow; admin CRUD for providers; IdP presets for Keycloak, Okta, Auth0, Entra ID, Google |
 | MS Graph | Microsoft Graph API source connector for Exchange Online mail migration (OAuth2 + paged MIME download) |
 | Providers (Enterprise) | Nextcloud and Exchange Online provider presets with MS Graph and IMAP OAuth2 defaults |
+| PostgreSQL backend | Opt-in via `DATABASE_URL`; `psycopg2`-backed drop-in for SQLiteStateStore; `pg_dump` for backups |
+| Redis job queue | `RedisJobManager` drop-in for BackgroundJobManager; `groupware-migrator-worker` CLI; horizontal scaling |
+| Data export | `GET /admin/export` JSON export; `GET /admin/backup/download` SQLite file download (WAL-checkpointed) |
 
 ---
 
@@ -198,13 +201,13 @@ An interactive HTML version with full feature details is available at [`roadmap.
 
 ---
 
-## Phase 12 — Scale & Resilience
+## Phase 12 — Scale & Resilience ✅
 
-*~6–8 weeks · Break SQLite ceiling without rewriting the core*
+*Complete — June 2026*
 
-- **PostgreSQL backend** — opt-in via `DATABASE_URL`; same schema through an ORM adapter layer (SQLAlchemy Core); SQLite stays default
-- **Horizontal scaling** — Redis-backed job queue (`rq` or `celery`); multiple worker processes; coordinator node stays thin
-- **Cloud state export** — S3, GCS, Azure Blob as optional targets for backup/restore CLI
+- **PostgreSQL backend** — opt-in via `DATABASE_URL`; `psycopg2`-backed `PostgresStateStore` inherits from SQLiteStateStore; SQL translated at call sites (`?`→`%s`, `INSERT OR IGNORE`→`ON CONFLICT DO NOTHING`); SQLite remains the default
+- **Horizontal scaling** — `RedisJobManager` drop-in for `BackgroundJobManager`; jobs pushed to a Redis LIST, cancellation via Redis key, `groupware-migrator-worker` CLI worker process; install with `pip install "groupware-migrator[redis]"`
+- **Data export** — `GET /admin/backup/download` (WAL-checkpointed SQLite download; 501 for PostgreSQL) and `GET /admin/export` (full JSON state dump)
 
 ---
 

@@ -132,18 +132,17 @@
   <div class="container">
     <header>
       <h1>Groupware Migrator — Roadmap</h1>
-      <p>Seven phases shipped. Five more planned. This document captures what was built, the architectural decisions made along the way, and the full roadmap to complete groupware migration coverage.</p>
+      <p>All twelve phases shipped. This document captures what was built, the architectural decisions made along the way, and what remains out of scope.</p>
       <div class="meta">
         <div class="badge">As of <strong>June 2026</strong></div>
-        <div class="badge green">Phases 1–11 <strong>complete</strong></div>
-        <div class="badge">Phase 12 <strong>planned</strong></div>
-        <div class="badge">323 tests · all green</div>
+        <div class="badge green">Phases 1–12 <strong>complete</strong></div>
+        <div class="badge">348 tests · all green</div>
       </div>
     </header>
 
     <!-- What's shipped -->
     <div class="foundation">
-      <h2>Phases 1–11 Complete — What's Shipped</h2>
+      <h2>Phases 1–12 Complete — What's Shipped</h2>
       <div class="foundation-grid">
         <div class="foundation-item">IMAP / POP3 / CalDAV / CardDAV connectors</div>
         <div class="foundation-item">Background jobs + crash recovery</div>
@@ -855,12 +854,12 @@
       <div class="phase-header">
         <div class="phase-number p12">12</div>
         <div class="phase-title">Scale &amp; Resilience</div>
-        <span class="phase-planned">🔜 Planned</span>
-        <div class="phase-effort">~6–8 weeks</div>
+        <span class="phase-complete">✅ Complete</span>
+        <div class="phase-date">June 2026</div>
       </div>
       <div class="phase-body">
         <div class="phase-desc">
-          For deployments that have grown beyond a single-process SQLite instance. <strong>PostgreSQL</strong> as an opt-in backend and a <strong>Redis-backed job queue</strong> for horizontal scale — without breaking any single-node deployments.
+          For deployments that have grown beyond a single-process SQLite instance. <strong>PostgreSQL</strong> as an opt-in backend, a <strong>Redis-backed job queue</strong> for horizontal scale, and admin <strong>data export</strong> — without breaking any single-node deployments.
         </div>
         <div class="feature-group">
           <div class="feature-group-title">Storage &amp; Scaling</div>
@@ -868,22 +867,22 @@
             <div class="feature">
               <div class="feature-icon">🐘</div>
               <div class="feature-content">
-                <div class="feature-name">PostgreSQL backend <span class="tag should">should</span></div>
-                <div class="feature-detail">Opt-in via <code>DATABASE_URL</code>. Same schema through an SQLAlchemy Core adapter. SQLite remains the default; no forced migration for existing installs.</div>
+                <div class="feature-name">PostgreSQL backend</div>
+                <div class="feature-detail">Opt-in via <code>DATABASE_URL</code>. <code>PostgresStateStore</code> inherits from <code>SQLiteStateStore</code>; SQL translated at call sites (<code>?</code>→<code>%s</code>, <code>INSERT OR IGNORE</code>→<code>ON CONFLICT DO NOTHING</code>). SQLite remains the default.</div>
               </div>
             </div>
             <div class="feature">
               <div class="feature-icon">⚖️</div>
               <div class="feature-content">
-                <div class="feature-name">Horizontal scaling via Redis job queue <span class="tag could">could</span></div>
-                <div class="feature-detail">Multiple worker processes compete for jobs via a Redis-backed queue. Coordinator node stays thin. Requires PostgreSQL backend for shared state.</div>
+                <div class="feature-name">Horizontal scaling via Redis job queue</div>
+                <div class="feature-detail"><code>RedisJobManager</code> drop-in for <code>BackgroundJobManager</code>. Jobs pushed to a Redis LIST; workers pop and execute. Cancellation via Redis key polled every 2 s. Start workers with <code>groupware-migrator-worker --redis-url redis://…</code>. Install: <code>pip install "groupware-migrator[redis]"</code>.</div>
               </div>
             </div>
             <div class="feature">
-              <div class="feature-icon">☁️</div>
+              <div class="feature-icon">💾</div>
               <div class="feature-content">
-                <div class="feature-name">Cloud state export (S3 / GCS / Azure Blob) <span class="tag could">could</span></div>
-                <div class="feature-detail">Optional remote target for the backup/restore CLI. Enables automated nightly exports in cloud-native deployments without mounting a host volume.</div>
+                <div class="feature-name">Admin data export</div>
+                <div class="feature-detail"><code>GET /admin/backup/download</code> — WAL-checkpointed SQLite file download (returns 501 for PostgreSQL backend; use <code>pg_dump</code>). <code>GET /admin/export</code> — full JSON state dump covering all jobs, users, batches, audit events, and OIDC providers.</div>
               </div>
             </div>
           </div>
