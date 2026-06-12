@@ -109,31 +109,15 @@ function setBatchFeedback(message, kind = 'info') {
 function setLiveIndicator(text, kind = 'neutral') {
   const node = $('live-indicator');
   node.textContent = text;
-  if (kind === 'ok') {
-    node.style.color = '#a7f3d0';
-    node.style.borderColor = 'rgba(34, 197, 94, 0.45)';
-  } else if (kind === 'error') {
-    node.style.color = '#fecaca';
-    node.style.borderColor = 'rgba(239, 68, 68, 0.45)';
-  } else {
-    node.style.color = '';
-    node.style.borderColor = '';
-  }
+  node.classList.toggle('live-ok', kind === 'ok');
+  node.classList.toggle('live-error', kind === 'error');
 }
 
 function setBatchLiveIndicator(text, kind = 'neutral') {
   const node = $('batch-live-indicator');
   node.textContent = text;
-  if (kind === 'ok') {
-    node.style.color = '#a7f3d0';
-    node.style.borderColor = 'rgba(34, 197, 94, 0.45)';
-  } else if (kind === 'error') {
-    node.style.color = '#fecaca';
-    node.style.borderColor = 'rgba(239, 68, 68, 0.45)';
-  } else {
-    node.style.color = '';
-    node.style.borderColor = '';
-  }
+  node.classList.toggle('live-ok', kind === 'ok');
+  node.classList.toggle('live-error', kind === 'error');
 }
 
 function setUIMode(mode) {
@@ -175,16 +159,25 @@ function findProvider(providerId) {
   return state.providers.find((provider) => provider.id === providerId) || null;
 }
 
-function populateProviderSelect(selectId) {
+function populateProviderSelect(selectId, protocol = null, side = 'source') {
   const select = $(selectId);
+  const currentValue = select.value;
   select.innerHTML = '';
   for (const provider of state.providers) {
+    if (protocol && provider.id !== 'custom') {
+      const defaults = side === 'source' ? provider.source_defaults : provider.destination_defaults;
+      if (!defaults?.[protocol]) continue;
+    }
     const option = document.createElement('option');
     option.value = provider.id;
     option.textContent = provider.name;
     select.appendChild(option);
   }
-  select.value = 'custom';
+  if ([...select.options].some((o) => o.value === currentValue)) {
+    select.value = currentValue;
+  } else {
+    select.value = 'custom';
+  }
 }
 
 function renderGuidance(targetId, provider, protocol) {
@@ -205,32 +198,75 @@ function renderGuidance(targetId, provider, protocol) {
   `;
 }
 
+const MULTI_WORKLOAD_PROTOCOLS = new Set(['ews']);
+
+function getProviderPreferredMultiProtocol() {
+  const provider = findProvider($('source-provider').value);
+  const primary = provider?.primary_source_protocol;
+  return primary && MULTI_WORKLOAD_PROTOCOLS.has(primary) ? primary : null;
+}
+
 function syncProtocolWithWorkload() {
   const workload = getSelectedWorkload();
   const sourceProtocolSelect = $('source-protocol');
   const pop3DestinationField = $('pop3-destination-mailbox')?.closest('label');
   if (!sourceProtocolSelect) return;
+  const current = sourceProtocolSelect.value;
   if (workload === 'mail') {
     sourceProtocolSelect.disabled = false;
-    if (sourceProtocolSelect.value === 'caldav' || sourceProtocolSelect.value === 'carddav') {
-      sourceProtocolSelect.value = 'imap';
+    if (current === 'caldav' || current === 'carddav') {
+      sourceProtocolSelect.value = getProviderPreferredMultiProtocol() || 'imap';
     }
     if (pop3DestinationField) pop3DestinationField.hidden = false;
-  } else if (workload === 'calendar' || workload === 'tasks' || workload === 'notes') {
+  } else if (workload === 'calendar' || workload === 'tasks') {
+    if (MULTI_WORKLOAD_PROTOCOLS.has(current)) {
+      sourceProtocolSelect.disabled = false;
+    } else {
+      const preferred = getProviderPreferredMultiProtocol();
+      if (preferred) {
+        sourceProtocolSelect.value = preferred;
+        sourceProtocolSelect.disabled = false;
+      } else {
+        sourceProtocolSelect.value = 'caldav';
+        sourceProtocolSelect.disabled = true;
+      }
+    }
+    if (pop3DestinationField) pop3DestinationField.hidden = true;
+  } else if (workload === 'notes') {
     sourceProtocolSelect.value = 'caldav';
     sourceProtocolSelect.disabled = true;
     if (pop3DestinationField) pop3DestinationField.hidden = true;
   } else if (workload === 'contacts') {
-    sourceProtocolSelect.value = 'carddav';
-    sourceProtocolSelect.disabled = true;
+    if (MULTI_WORKLOAD_PROTOCOLS.has(current)) {
+      sourceProtocolSelect.disabled = false;
+    } else {
+      const preferred = getProviderPreferredMultiProtocol();
+      if (preferred) {
+        sourceProtocolSelect.value = preferred;
+        sourceProtocolSelect.disabled = false;
+      } else {
+        sourceProtocolSelect.value = 'carddav';
+        sourceProtocolSelect.disabled = true;
+      }
+    }
     if (pop3DestinationField) pop3DestinationField.hidden = true;
   }
 }
 
 function applySourceProviderDefaults() {
   const provider = findProvider($('source-provider').value);
-  const protocol = $('source-protocol').value;
   if (!provider) return;
+  const sourceProtocolSelect = $('source-protocol');
+  // Auto-switch to the provider's preferred protocol (e.g. EWS for Exchange on-premises)
+  if (provider.primary_source_protocol) {
+    const primary = provider.primary_source_protocol;
+    if ([...sourceProtocolSelect.options].some((o) => o.value === primary)) {
+      sourceProtocolSelect.value = primary;
+      sourceProtocolSelect.disabled = false;
+      refreshProviderSelects();
+    }
+  }
+  const protocol = sourceProtocolSelect.value;
   const defaults = provider.source_defaults?.[protocol];
   if (!defaults) {
     renderGuidance('source-auth-guidance', provider, protocol);
@@ -943,12 +979,18 @@ async function loadCsvFileToTextarea(fileInput) {
   setBatchFeedback(`Loaded CSV file: ${file.name}`, 'success');
 }
 
+function refreshProviderSelects() {
+  const sourceProtocol = $('source-protocol').value;
+  const destProtocol = getDestinationProtocolForWorkload(getSelectedWorkload());
+  populateProviderSelect('source-provider', sourceProtocol, 'source');
+  populateProviderSelect('destination-provider', destProtocol, 'destination');
+}
+
 async function loadProviders() {
   const payload = await requestJSON(`${API_BASE}/providers`);
   state.providers = payload.items || [];
-  populateProviderSelect('source-provider');
-  populateProviderSelect('destination-provider');
   syncProtocolWithWorkload();
+  refreshProviderSelects();
   applySourceProviderDefaults();
   applyDestinationProviderDefaults();
 }
@@ -993,10 +1035,12 @@ function wireInteractions() {
   // Form field change listeners
   $('workload').addEventListener('change', () => {
     syncProtocolWithWorkload();
+    refreshProviderSelects();
     applySourceProviderDefaults();
     applyDestinationProviderDefaults();
   });
   $('source-protocol').addEventListener('change', () => {
+    refreshProviderSelects();
     applySourceProviderDefaults();
     applyDestinationProviderDefaults();
   });

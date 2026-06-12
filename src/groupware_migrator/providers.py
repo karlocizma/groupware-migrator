@@ -156,21 +156,21 @@ _PROVIDER_PRESETS: list[dict] = [
     },
     {
         "id": "microsoft365",
-        "name": "Microsoft 365 / Outlook",
+        "name": "Microsoft 365 / Exchange Online",
         "source_defaults": {
             "imap": _endpoint_defaults(
                 host="outlook.office365.com",
                 port=993,
-                auth_mode="password",
+                auth_mode="oauth2",
                 oauth_token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-                oauth_scope="https://outlook.office.com/.default offline_access",
+                oauth_scope="https://outlook.office.com/IMAP.AccessAsUser.All offline_access",
             ),
             "pop3": _endpoint_defaults(
                 host="outlook.office365.com",
                 port=995,
-                auth_mode="password",
+                auth_mode="oauth2",
                 oauth_token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-                oauth_scope="https://outlook.office.com/.default offline_access",
+                oauth_scope="https://outlook.office.com/POP.AccessAsUser.All offline_access",
             ),
             "caldav": _endpoint_defaults(
                 host="outlook.office365.com",
@@ -191,9 +191,9 @@ _PROVIDER_PRESETS: list[dict] = [
             "imap": _endpoint_defaults(
                 host="outlook.office365.com",
                 port=993,
-                auth_mode="password",
+                auth_mode="oauth2",
                 oauth_token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-                oauth_scope="https://outlook.office.com/.default offline_access",
+                oauth_scope="https://outlook.office.com/IMAP.AccessAsUser.All offline_access",
             ),
             "caldav": _endpoint_defaults(
                 host="outlook.office365.com",
@@ -211,11 +211,13 @@ _PROVIDER_PRESETS: list[dict] = [
             ),
         },
         "auth_guidance": {
-            "summary": "Tenant policy may block basic auth; OAuth/XOAUTH2 is recommended where possible.",
+            "summary": "Microsoft 365 requires modern auth (OAuth2) — basic auth has been permanently disabled.",
             "steps": [
-                "Verify IMAP/POP3 is enabled for the mailbox in Exchange admin settings.",
-                "If MFA is active, use an app password where supported.",
-                "Confirm conditional access policies allow legacy protocol access for migration.",
+                "Register an app in Azure Portal → Microsoft Entra ID → App registrations.",
+                "Grant IMAP.AccessAsUser.All (or Mail.Read for MS Graph) application permission.",
+                "Issue a token using client credentials or authorization code flow.",
+                "Use the access token in the OAuth access token field above.",
+                "Replace 'common' in the token URL with your Azure AD tenant ID for single-tenant apps.",
             ],
             "reference_url": "https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/pop3-and-imap4",
         },
@@ -925,46 +927,9 @@ _PROVIDER_PRESETS: list[dict] = [
         "reference_url": "https://docs.nextcloud.com/server/latest/user_manual/en/groupware/index.html",
     },
     {
-        "id": "exchange_online",
-        "name": "Microsoft Exchange Online (Microsoft 365)",
-        "source_defaults": {
-            "msgraph": {
-                "host": "graph.microsoft.com",
-                "port": 443,
-                "use_ssl": True,
-                "auth_mode": "oauth2",
-                "oauth_token_url": "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
-                "oauth_scope": "https://graph.microsoft.com/Mail.Read offline_access",
-            },
-            "imap": _endpoint_defaults(
-                host="outlook.office365.com",
-                port=993,
-                auth_mode="oauth2",
-                oauth_token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-                oauth_scope="https://outlook.office.com/IMAP.AccessAsUser.All offline_access",
-            ),
-        },
-        "destination_defaults": {
-            "imap": _endpoint_defaults(
-                host="outlook.office365.com",
-                port=993,
-                auth_mode="oauth2",
-                oauth_token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
-                oauth_scope="https://outlook.office.com/IMAP.AccessAsUser.All offline_access",
-            ),
-        },
-        "auth_notes": [
-            "Use modern auth (OAuth2) — basic auth is disabled on Microsoft 365.",
-            "Register an app in Azure Portal → Microsoft Entra ID → App registrations.",
-            "Grant Mail.Read (or IMAP.AccessAsUser.All) permission and issue a token.",
-            "For MS Graph source: set auth_mode=oauth2 and provide oauth_access_token or refresh credentials.",
-            "Replace {tenant_id} in oauth_token_url with your Azure AD tenant ID.",
-        ],
-        "reference_url": "https://learn.microsoft.com/en-us/exchange/client-developer/exchange-web-services/start-using-web-services-in-exchange",
-    },
-    {
         "id": "exchange_onprem",
         "name": "Exchange Server (On-Premises)",
+        "primary_source_protocol": "ews",
         "source_defaults": {
             "ews": {
                 "host": "",
@@ -989,7 +954,6 @@ _PROVIDER_PRESETS: list[dict] = [
             "Use your email address (user@corp.example.com) or DOMAIN\\username format.",
             "Enter the Exchange server hostname (e.g. mail.corp.example.com) or leave blank for autodiscover.",
             "EWS supports mail, calendar, contacts, and tasks — use the workload selector to choose.",
-            "Requires pip install 'groupware-migrator[ews]' on the server running the migrator.",
         ],
         "reference_url": "https://learn.microsoft.com/en-us/exchange/client-developer/exchange-web-services/explore-the-ews-managed-api-ews-and-web-services-in-exchange",
     },

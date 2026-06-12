@@ -13,11 +13,13 @@
 
     <main class="app-shell">
       <header class="hero">
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:4px">
-          <h1 style="margin:0">Groupware Migrator</h1>
-          <a href="/scheduler" style="font-size:0.82rem;color:#8892a4;text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:20px;background:rgba(255,255,255,0.04)" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#8892a4'">Schedules</a>
-          <a href="/orgs" style="font-size:0.82rem;color:#8892a4;text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:20px;background:rgba(255,255,255,0.04)" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#8892a4'">Orgs</a>
-          <a id="admin-link" href="/admin" style="display:none;font-size:0.82rem;color:#8892a4;text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:20px;background:rgba(255,255,255,0.04)" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#8892a4'">Admin</a>
+        <div class="app-header">
+          <h1>Groupware Migrator</h1>
+          <nav class="header-nav">
+            <a href="/scheduler" class="nav-pill">Schedules</a>
+            <a href="/orgs" class="nav-pill">Orgs</a>
+            <a id="admin-link" href="/admin" class="nav-pill" style="display:none">Admin</a>
+          </nav>
         </div>
         <p>Migrate email, calendar, and contacts between servers with resumable jobs and live progress updates.</p>
       </header>
@@ -74,6 +76,7 @@
                 <select id="source-protocol">
                   <option value="imap">IMAP</option>
                   <option value="pop3">POP3</option>
+                  <option value="ews">EWS (Exchange Web Services)</option>
                   <option value="caldav">CalDAV</option>
                   <option value="carddav">CardDAV</option>
                 </select>
