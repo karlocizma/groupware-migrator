@@ -149,19 +149,16 @@ run_docker() {
     exit 1
   fi
 
-  if docker compose version &>/dev/null 2>&1; then
-    COMPOSE="docker compose"
-  elif command -v docker-compose &>/dev/null; then
-    COMPOSE="docker-compose"
-  else
+  if ! docker compose version &>/dev/null 2>&1; then
     printf 'Error: docker compose plugin not found.\n' >&2
+    printf 'Install Docker Desktop or the Compose plugin: https://docs.docker.com/compose/install/\n' >&2
     exit 1
   fi
 
   setup_env
 
   info "Building image and starting containers..."
-  ${COMPOSE} up --build -d
+  docker compose up --build -d
 
   printf '\n'
   success "Groupware Migrator is running at http://localhost:8000"
