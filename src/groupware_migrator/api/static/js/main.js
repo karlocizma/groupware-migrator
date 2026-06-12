@@ -159,14 +159,21 @@ function findProvider(providerId) {
   return state.providers.find((provider) => provider.id === providerId) || null;
 }
 
-function populateProviderSelect(selectId, protocol = null, side = 'source') {
+function getCompatibleSourceProtocols(workload) {
+  if (workload === 'mail' || workload === 'all') return ['imap', 'pop3', 'ews'];
+  if (workload === 'calendar' || workload === 'tasks') return ['caldav', 'ews'];
+  if (workload === 'contacts') return ['carddav', 'ews'];
+  return ['caldav']; // notes
+}
+
+function populateProviderSelect(selectId, protocols = null, side = 'source') {
   const select = $(selectId);
   const currentValue = select.value;
   select.innerHTML = '';
   for (const provider of state.providers) {
-    if (protocol && provider.id !== 'custom') {
+    if (protocols && provider.id !== 'custom') {
       const defaults = side === 'source' ? provider.source_defaults : provider.destination_defaults;
-      if (!defaults?.[protocol]) continue;
+      if (!protocols.some((p) => defaults?.[p])) continue;
     }
     const option = document.createElement('option');
     option.value = provider.id;
@@ -207,11 +214,27 @@ function getProviderPreferredMultiProtocol() {
 }
 
 function syncProtocolWithWorkload() {
-  const workload = getSelectedWorkload();
+  const rawWorkload = $('workload')?.value || 'mail';
+  const workload = rawWorkload;
   const sourceProtocolSelect = $('source-protocol');
   const pop3DestinationField = $('pop3-destination-mailbox')?.closest('label');
   if (!sourceProtocolSelect) return;
   const current = sourceProtocolSelect.value;
+
+  // Show "All workloads" option only when EWS is selected
+  const allOption = document.querySelector('#workload option[value="all"]');
+  if (allOption) {
+    const isEws = current === 'ews';
+    allOption.hidden = !isEws;
+    if (!isEws && rawWorkload === 'all') $('workload').value = 'mail';
+  }
+
+  if (rawWorkload === 'all') {
+    sourceProtocolSelect.disabled = false;
+    if (pop3DestinationField) pop3DestinationField.hidden = true;
+    return;
+  }
+
   if (workload === 'mail') {
     sourceProtocolSelect.disabled = false;
     if (current === 'caldav' || current === 'carddav') {
@@ -344,9 +367,9 @@ function applyOAuthConnectionFields(connection, prefix) {
   if (scope) connection.oauth_scope = scope;
 }
 
-function buildRequestPayload() {
-  const workload = getSelectedWorkload();
-  syncProtocolWithWorkload();
+function buildRequestPayload(workloadOverride = null) {
+  const workload = workloadOverride || getSelectedWorkload();
+  if (!workloadOverride) syncProtocolWithWorkload();
   const sourceProtocol = $('source-protocol').value;
   const destinationProtocol = getDestinationProtocolForWorkload(workload);
   const sourceFallbackPort = getSourceFallbackPort(sourceProtocol);
@@ -357,6 +380,11 @@ function buildRequestPayload() {
   const destinationAuthMode = $('destination-auth-mode').value === 'oauth2' ? 'oauth2' : 'password';
   const includeCollections = splitLines($('include-mailboxes').value);
   const collectionMapping = parseFolderMapping($('folder-mapping').value);
+  // When called per-workload for a bundle job, use the protocol's own port default
+  // rather than the form port (which was set for IMAP and would be wrong for CalDAV)
+  const destPort = workloadOverride
+    ? destinationFallbackPort
+    : normalizePortValue($('destination-port').value, destinationFallbackPort);
 
   const payload = {
     job_name: $('job-name').value.trim() || null,
@@ -378,7 +406,7 @@ function buildRequestPayload() {
       provider_id: $('destination-provider').value,
       connection: {
         host: $('destination-host').value.trim(),
-        port: normalizePortValue($('destination-port').value, destinationFallbackPort),
+        port: destPort,
         username: $('destination-username').value.trim(),
         use_ssl: $('destination-ssl').checked,
         tls_profile: $('destination-tls-profile').value,
@@ -878,6 +906,10 @@ function connectSelectedBatchStream() {
 }
 
 async function buildPlan() {
+  if ($('workload').value === 'all') {
+    setFeedback('Select a single workload to preview the migration plan.');
+    return;
+  }
   try {
     setFeedback('Building migration plan...');
     const request = buildRequestPayload();
@@ -890,6 +922,10 @@ async function buildPlan() {
 }
 
 async function runJobPreflight() {
+  if ($('workload').value === 'all') {
+    setFeedback('Select a single workload to run preflight checks.');
+    return;
+  }
   try {
     setFeedback('Running preflight checks...');
     const request = buildRequestPayload();
@@ -905,7 +941,41 @@ async function runJobPreflight() {
   }
 }
 
+async function startAllEwsWorkloads() {
+  const EWS_WORKLOADS = ['mail', 'calendar', 'contacts', 'tasks'];
+  setFeedback('Starting all Exchange workload jobs…');
+  const jobBaseName = $('job-name').value.trim();
+  let started = 0;
+  let lastJobId = null;
+  for (const wl of EWS_WORKLOADS) {
+    try {
+      const request = buildRequestPayload(wl);
+      request.job_name = jobBaseName ? `${jobBaseName} — ${wl}` : `Exchange migration — ${wl}`;
+      const response = await requestJSON(`${API_BASE}/jobs/start`, { method: 'POST', body: JSON.stringify(request) });
+      lastJobId = response.job_id;
+      started++;
+    } catch (error) {
+      setFeedback(`Failed to start ${wl} job: ${error.message}`, 'error');
+      break;
+    }
+  }
+  if (lastJobId) state.selectedJobId = lastJobId;
+  setFeedback(
+    `Started ${started} of ${EWS_WORKLOADS.length} Exchange migration jobs.`,
+    started === EWS_WORKLOADS.length ? 'success' : 'error',
+  );
+  await refreshJobsList();
+  if (lastJobId) {
+    await loadSelectedJobSnapshot();
+    connectSelectedJobStream();
+  }
+}
+
 async function startBackgroundJob() {
+  if ($('workload').value === 'all') {
+    await startAllEwsWorkloads();
+    return;
+  }
   try {
     setFeedback('Starting background migration job...');
     const request = buildRequestPayload();
@@ -980,10 +1050,11 @@ async function loadCsvFileToTextarea(fileInput) {
 }
 
 function refreshProviderSelects() {
-  const sourceProtocol = $('source-protocol').value;
-  const destProtocol = getDestinationProtocolForWorkload(getSelectedWorkload());
-  populateProviderSelect('source-provider', sourceProtocol, 'source');
-  populateProviderSelect('destination-provider', destProtocol, 'destination');
+  const rawWorkload = $('workload')?.value || 'mail';
+  const workload = rawWorkload === 'all' ? 'all' : getSelectedWorkload();
+  const destProtocol = workload === 'all' ? 'imap' : getDestinationProtocolForWorkload(workload);
+  populateProviderSelect('source-provider', getCompatibleSourceProtocols(workload), 'source');
+  populateProviderSelect('destination-provider', [destProtocol], 'destination');
 }
 
 async function loadProviders() {
