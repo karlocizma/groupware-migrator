@@ -2,15 +2,20 @@ name: CI
 on:
   schedule:
     - cron: '0 2 * * *'
+  push:
+    branches: [main]
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -18,9 +23,7 @@ jobs:
         run: |
           npm install -g \
             semantic-release \
-            @semantic-release/changelog \
-            @semantic-release/git \
-            @semantic-release/exec \
+            @semantic-release/release-notes-generator \
             @semantic-release/github
       - name: Release
         env:
