@@ -13,7 +13,7 @@ Local-first tool for migrating email, calendar, contacts, tasks, and notes betwe
 - **Auth modes:** password and OAuth/XOAUTH2 (direct access token or refresh-token exchange)
 - **Provider presets:** Gmail, Microsoft 365, Yahoo, Zoho, Nextcloud, Exchange Online, Exchange Server (On-Premises); German/DACH providers: GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet
 - **MS Graph connector:** Exchange Online mail migration via Microsoft Graph API (OAuth2)
-- **EWS connector:** on-premises Exchange Server 2010–2019 — mail, calendar, contacts, and tasks via EWS; NTLM/password auth; optional autodiscover (`pip install "groupware-migrator[ews]"`)
+- **EWS connector:** on-premises Exchange Server 2010–2019 — mail, calendar, contacts, and tasks via EWS; NTLM/password auth; optional autodiscover
 - **Multi-user:** JWT session authentication, per-user job scoping, API key support
 - **Reports:** per-job structured audit events, JSON/CSV export
 - **Scheduling:** cron-style and interval-based recurring jobs (e.g. `0 2 * * *`, `6h`)
