@@ -32,53 +32,61 @@ Local-first tool for migrating email, calendar, contacts, tasks, and notes betwe
 
 ## Quick start
 
+`start.sh` handles everything — pick a mode and it sets up the environment, installs dependencies, and starts the server. No manual steps needed.
+
 ```bash
-# 1. Create a virtual environment
-python3 -m venv .venv && source .venv/bin/activate
+./start.sh
+```
 
-# 2. Install
-pip install -e ".[dev]"
+```
+Groupware Migrator
 
-# 3. Start the web UI
-ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=changeme ./start.sh
+  1)  Docker   — build image, start with docker compose
+  2)  Venv     — create Python venv, start with uvicorn
 
-# 4. Open http://127.0.0.1:8000/login
+Choose [1/2]:
+```
+
+On first run it will ask for an admin email and password, then auto-generate a `JWT_SECRET` and write a `.env` file. After that it starts immediately.
+
+Use flags to skip the prompt:
+
+```bash
+./start.sh --docker   # Docker mode
+./start.sh --venv     # Python venv mode
+./start.sh --test     # Run the test suite (venv)
 ```
 
 ## Docker
 
-### docker-compose (recommended)
+### Via start.sh (recommended)
 
 ```bash
-# 1. Create an env file
-cp .env.example .env   # or create it manually — see Environment variables below
+./start.sh --docker
+```
+
+This builds the image, generates `.env` if it doesn't exist (prompts for admin credentials, auto-generates `JWT_SECRET`), and runs `docker compose up --build -d`. Open **http://localhost:8000** when it finishes.
+
+```
+Logs:   docker compose logs -f
+Stop:   docker compose down
+```
+
+### Manually with docker compose
+
+```bash
+# 1. Copy the example env file and fill in your values
+cp .env.example .env
 
 # 2. Build and start
-docker compose up -d
+docker compose up --build -d
 
 # 3. Open http://localhost:8000/login
 ```
 
-The container persists all state in `./data/state.db` (mounted as a volume). Logs are written to stdout and captured by Docker.
+State is persisted in `./data/state.db` (volume-mounted). Logs go to stdout.
 
-### Docker CLI
-
-```bash
-# Build
-docker build -t groupware-migrator .
-
-# Run
-docker run -d \
-  --name groupware-migrator \
-  -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  -e ADMIN_EMAIL=admin@example.com \
-  -e ADMIN_PASSWORD=changeme \
-  -e JWT_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))") \
-  groupware-migrator
-```
-
-### docker-compose with PostgreSQL and Redis (horizontal scaling)
+### docker compose with PostgreSQL and Redis (horizontal scaling)
 
 ```yaml
 # docker-compose.prod.yml
