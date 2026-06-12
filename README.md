@@ -4,15 +4,16 @@ Local-first tool for migrating email, calendar, contacts, tasks, and notes betwe
 
 ## Features
 
-- **Workloads:** `mail` (IMAP/POP3/MS Graph → IMAP), `calendar` (CalDAV → CalDAV), `contacts` (CardDAV → CardDAV), `tasks` (VTODO over CalDAV), `notes` (VJOURNAL over CalDAV)
+- **Workloads:** `mail` (IMAP/POP3/MS Graph/EWS → IMAP), `calendar` (CalDAV/EWS → CalDAV), `contacts` (CardDAV/EWS → CardDAV), `tasks` (CalDAV/EWS → CalDAV), `notes` (VJOURNAL over CalDAV)
 - **Background jobs:** asynchronous execution with live SSE progress updates
 - **Batch migration:** CSV-driven multi-user waves with per-row overrides
 - **Incremental sync:** cursor-based delta sync; anchored to a completed base job or persisted cursors
 - **Preflight checks:** validates source/destination connectivity and plan readiness before execution
 - **Idempotency:** fingerprint-based duplicate prevention across runs
 - **Auth modes:** password and OAuth/XOAUTH2 (direct access token or refresh-token exchange)
-- **Provider presets:** Gmail, Microsoft 365, Yahoo, Zoho, Nextcloud, Exchange Online; German/DACH providers: GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet
+- **Provider presets:** Gmail, Microsoft 365, Yahoo, Zoho, Nextcloud, Exchange Online, Exchange Server (On-Premises); German/DACH providers: GMX, WEB.DE, T-Online, Posteo, mailbox.org, IONOS, Strato, Freenet
 - **MS Graph connector:** Exchange Online mail migration via Microsoft Graph API (OAuth2)
+- **EWS connector:** on-premises Exchange Server 2010–2019 — mail, calendar, contacts, and tasks via EWS; NTLM/password auth; optional autodiscover (`pip install "groupware-migrator[ews]"`)
 - **Multi-user:** JWT session authentication, per-user job scoping, API key support
 - **Reports:** per-job structured audit events, JSON/CSV export
 - **Scheduling:** cron-style and interval-based recurring jobs (e.g. `0 2 * * *`, `6h`)
@@ -361,6 +362,7 @@ groupware_migrator/
 │   ├── imap.py             # IMAP source + destination
 │   ├── pop3.py             # POP3 source
 │   ├── dav.py              # CalDAV + CardDAV (PROPFIND/GET/PUT/MKCOL)
+│   ├── ews.py              # EWS source connector (on-prem Exchange Server; requires exchangelib)
 │   ├── graph.py            # Microsoft Graph API source (Exchange Online mail)
 │   ├── auth.py             # OAuth token resolution
 │   └── factory.py          # Protocol → connector dispatch (+ plugin registry fallback)

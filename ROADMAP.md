@@ -35,6 +35,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 | Tasks / Notes | VTODO and VJOURNAL workload types over CalDAV; full UI, validation, and runner support |
 | SSO / OIDC | OIDC authorization-code flow; admin CRUD for providers; IdP presets for Keycloak, Okta, Auth0, Entra ID, Google |
 | MS Graph | Microsoft Graph API source connector for Exchange Online mail migration (OAuth2 + paged MIME download) |
+| EWS | Exchange Web Services source connector for on-premises Exchange Server 2010–2019; mail, calendar, contacts, tasks; NTLM auth + autodiscover; `pip install "groupware-migrator[ews]"` |
 | Providers (Enterprise) | Nextcloud and Exchange Online provider presets with MS Graph and IMAP OAuth2 defaults |
 | PostgreSQL backend | Opt-in via `DATABASE_URL`; `psycopg2`-backed drop-in for SQLiteStateStore; `pg_dump` for backups |
 | Redis job queue | `RedisJobManager` drop-in for BackgroundJobManager; `groupware-migrator-worker` CLI; horizontal scaling |
@@ -175,7 +176,7 @@ An interactive HTML version with full feature details is available at [`roadmap.
 - **Microsoft Graph API connector** — OAuth2 bearer auth; paginated folder listing; raw MIME download; `SourceProtocol.MSGRAPH`
 - **Nextcloud provider preset** — CalDAV/CardDAV with `/remote.php/dav` paths and app-password auth notes
 - **Exchange Online provider preset** — MS Graph + IMAP OAuth2 defaults with Entra ID token URL templates
-- **Exchange EWS connector** *(deferred — modern Exchange workloads use MS Graph; EWS is deprecated by Microsoft)*
+- **Exchange EWS connector** — `EwsSourceConnector` backed by `exchangelib`; mail (raw MIME), calendar (VEVENT), contacts (vCard 3.0), tasks (VTODO); NTLM/password auth; optional autodiscover; install with `pip install "groupware-migrator[ews]"`
 
 ---
 
@@ -219,7 +220,6 @@ Items that were planned but intentionally deferred. Each has a concrete reason a
 | Feature | Originally Planned | Reason Deferred | Revisit When |
 |---|---|---|---|
 | **SAML 2.0** | Phase 7 / 11 | OIDC covers Keycloak, Okta, Auth0, Entra ID, Google — the vast majority of enterprise IdPs | A paying customer requires SAML and cannot use OIDC |
-| **Exchange EWS connector** | Phase 9 | Microsoft deprecated EWS; MS Graph covers all modern Exchange Online workloads | On-premises Exchange ≤2016 customer with no MS Graph access |
 | **Cloud backup targets** | Phase 12 | File download + `pg_dump` cover self-hosted deployments; cloud targets add three new SDKs | Managed SaaS offering where operator cannot access the container filesystem |
 
 ---

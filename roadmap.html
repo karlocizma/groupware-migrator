@@ -732,7 +732,7 @@
       </div>
       <div class="phase-body">
         <div class="phase-desc">
-          Reach environments that can't be migrated over standard IMAP/CalDAV. <strong>Microsoft Graph API</strong> connector ships for Exchange Online; <strong>Nextcloud</strong> and <strong>Exchange Online</strong> provider presets added. EWS connector deferred — Microsoft has deprecated EWS in favour of Graph.
+          Reach environments that can't be migrated over standard IMAP/CalDAV. <strong>Microsoft Graph API</strong> connector ships for Exchange Online; <strong>EWS connector</strong> ships for on-premises Exchange Server 2010–2019; <strong>Nextcloud</strong> and <strong>Exchange Online</strong> provider presets added.
         </div>
         <div class="feature-group">
           <div class="feature-group-title">Protocol Plugins</div>
@@ -740,8 +740,8 @@
             <div class="feature">
               <div class="feature-icon">🏢</div>
               <div class="feature-content">
-                <div class="feature-name">Exchange EWS connector <span class="deferred-note">(deferred — EWS deprecated by Microsoft)</span></div>
-                <div class="feature-detail">Microsoft deprecated EWS for Exchange Online; modern workloads use MS Graph. On-premises Exchange ≤2016 without Graph access is the remaining EWS use case.</div>
+                <div class="feature-name">Exchange EWS connector</div>
+                <div class="feature-detail">On-premises Exchange Server 2010–2019 source via EWS. Migrates mail (raw MIME), calendar (VEVENT), contacts (vCard 3.0), and tasks (VTODO). NTLM/password auth with optional autodiscover. Install: <code>pip install "groupware-migrator[ews]"</code></div>
               </div>
             </div>
             <div class="feature">
@@ -963,12 +963,6 @@
             <td style="padding:10px 12px;color:var(--muted)">11</td>
             <td style="padding:10px 12px;color:var(--muted)">OIDC covers Keycloak, Okta, Auth0, Entra ID, Google — the vast majority of enterprise IdPs</td>
             <td style="padding:10px 12px;color:var(--muted)">A customer requires SAML and cannot use OIDC</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:10px 12px;font-weight:600">Exchange EWS connector</td>
-            <td style="padding:10px 12px;color:var(--muted)">9</td>
-            <td style="padding:10px 12px;color:var(--muted)">Microsoft deprecated EWS; MS Graph covers all modern Exchange Online workloads</td>
-            <td style="padding:10px 12px;color:var(--muted)">On-premises Exchange ≤2016 customer with no MS Graph access</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border)">
             <td style="padding:10px 12px;font-weight:600">Grafana dashboard template</td>
