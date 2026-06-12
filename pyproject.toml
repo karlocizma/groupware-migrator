@@ -30,6 +30,9 @@ postgres = [
 redis = [
   "redis>=5.0"
 ]
+ews = [
+  "exchangelib>=5.0"
+]
 
 [project.scripts]
 groupware-migrator = "groupware_migrator.cli:main"

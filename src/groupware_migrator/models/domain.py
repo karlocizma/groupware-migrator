@@ -11,6 +11,7 @@ class SourceProtocol(StrEnum):
     CALDAV = "caldav"
     CARDDAV = "carddav"
     MSGRAPH = "msgraph"
+    EWS = "ews"
 
 
 class DestinationProtocol(StrEnum):
@@ -165,26 +166,26 @@ def _validate_workload_protocols(
     if source_protocol not in set(SourceProtocol) or destination_protocol not in set(DestinationProtocol):
         return
     if workload is WorkloadType.MAIL:
-        if source_protocol not in {SourceProtocol.IMAP, SourceProtocol.POP3, SourceProtocol.MSGRAPH}:
-            raise ValueError("Mail workload requires IMAP, POP3, or MS Graph source protocol.")
+        if source_protocol not in {SourceProtocol.IMAP, SourceProtocol.POP3, SourceProtocol.MSGRAPH, SourceProtocol.EWS}:
+            raise ValueError("Mail workload requires IMAP, POP3, MS Graph, or EWS source protocol.")
         if destination_protocol is not DestinationProtocol.IMAP:
             raise ValueError("Mail workload requires IMAP destination protocol.")
         return
     if workload is WorkloadType.CALENDAR:
-        if source_protocol is not SourceProtocol.CALDAV:
-            raise ValueError("Calendar workload requires CalDAV source protocol.")
+        if source_protocol not in {SourceProtocol.CALDAV, SourceProtocol.EWS}:
+            raise ValueError("Calendar workload requires CalDAV or EWS source protocol.")
         if destination_protocol is not DestinationProtocol.CALDAV:
             raise ValueError("Calendar workload requires CalDAV destination protocol.")
         return
     if workload is WorkloadType.TASKS:
-        if source_protocol is not SourceProtocol.CALDAV:
-            raise ValueError("Tasks workload requires CalDAV source protocol.")
+        if source_protocol not in {SourceProtocol.CALDAV, SourceProtocol.EWS}:
+            raise ValueError("Tasks workload requires CalDAV or EWS source protocol.")
         if destination_protocol is not DestinationProtocol.CALDAV:
             raise ValueError("Tasks workload requires CalDAV destination protocol.")
         return
     if workload is WorkloadType.CONTACTS:
-        if source_protocol is not SourceProtocol.CARDDAV:
-            raise ValueError("Contacts workload requires CardDAV source protocol.")
+        if source_protocol not in {SourceProtocol.CARDDAV, SourceProtocol.EWS}:
+            raise ValueError("Contacts workload requires CardDAV or EWS source protocol.")
         if destination_protocol is not DestinationProtocol.CARDDAV:
             raise ValueError("Contacts workload requires CardDAV destination protocol.")
         return

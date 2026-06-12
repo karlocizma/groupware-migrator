@@ -962,6 +962,37 @@ _PROVIDER_PRESETS: list[dict] = [
         ],
         "reference_url": "https://learn.microsoft.com/en-us/exchange/client-developer/exchange-web-services/start-using-web-services-in-exchange",
     },
+    {
+        "id": "exchange_onprem",
+        "name": "Exchange Server (On-Premises)",
+        "source_defaults": {
+            "ews": {
+                "host": "",
+                "port": 443,
+                "use_ssl": True,
+                "tls_profile": "compatibility",
+                "auth_mode": "password",
+                "oauth_token_url": "",
+                "oauth_scope": "",
+            },
+            "imap": _endpoint_defaults(
+                host="",
+                port=993,
+                auth_mode="password",
+                oauth_token_url="",
+                oauth_scope="",
+            ),
+        },
+        "destination_defaults": {},
+        "auth_notes": [
+            "EWS is enabled by default on Exchange Server 2010–2019.",
+            "Use your email address (user@corp.example.com) or DOMAIN\\username format.",
+            "Enter the Exchange server hostname (e.g. mail.corp.example.com) or leave blank for autodiscover.",
+            "EWS supports mail, calendar, contacts, and tasks — use the workload selector to choose.",
+            "Requires pip install 'groupware-migrator[ews]' on the server running the migrator.",
+        ],
+        "reference_url": "https://learn.microsoft.com/en-us/exchange/client-developer/exchange-web-services/explore-the-ews-managed-api-ews-and-web-services-in-exchange",
+    },
 ]
 
 

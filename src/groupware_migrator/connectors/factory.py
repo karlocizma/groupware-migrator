@@ -7,6 +7,7 @@ from groupware_migrator.connectors.dav import (
     CardDavDestinationConnector,
     CardDavSourceConnector,
 )
+from groupware_migrator.connectors.ews import EwsSourceConnector
 from groupware_migrator.connectors.graph import MsGraphSourceConnector
 from groupware_migrator.connectors.imap import ImapDestinationConnector, ImapSourceConnector
 from groupware_migrator.connectors.pop3 import Pop3SourceConnector
@@ -25,6 +26,8 @@ def create_source_connector(request: MigrationRequest) -> SourceConnector:
         return CardDavSourceConnector(request.source.connection)
     if request.source.protocol == SourceProtocol.MSGRAPH:
         return MsGraphSourceConnector(request.source.connection)
+    if request.source.protocol == SourceProtocol.EWS:
+        return EwsSourceConnector(request.source.connection, workload=request.workload)
     cls = get_registry().get_source(str(request.source.protocol))
     if cls is not None:
         return cls(request.source.connection)
